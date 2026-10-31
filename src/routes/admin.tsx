@@ -28,6 +28,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ import { useAuth, useProfile } from "@/hooks/useAuth";
 import { marketsQuery } from "./index";
 import { resultLabel, fmtTime, marketStatus, fmtIST, gameLabel, canMarketDeclareOpen, canMarketDeclareClose, isMarketOpenForAdmin, sortMarketsForAdmin } from "@/lib/matka";
 import { AdminPlays } from "@/components/AdminPlays";
+import { AdminRiskHedging } from "@/components/AdminRiskHedging";
 import { fetchRsbossLiveResults, type MarketLiveResult } from "@/lib/rsbossFetcher";
 
 export const Route = createFileRoute("/admin")({
@@ -72,7 +74,7 @@ function Admin() {
   }, [markets]);
   const qc = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<"markets" | "plays" | "players" | "pnl">("markets");
+  const [activeTab, setActiveTab] = useState<"markets" | "plays" | "players" | "pnl" | "risk">("markets");
   const [form, setForm] = useState({ name: "", open_time: "10:00", close_time: "11:00" });
   const [pannas, setPannas] = useState<Record<string, string>>({});
   const [times, setTimes] = useState<Record<string, { open_time: string; close_time: string }>>({});
@@ -630,6 +632,15 @@ function Admin() {
             }`}
           >
             Live Player Bets
+          </button>
+          <button
+            onClick={() => setActiveTab("risk")}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+              activeTab === "risk" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+            Risk & Load (कटाई)
           </button>
           <button
             onClick={() => setActiveTab("players")}
@@ -1351,6 +1362,9 @@ function Admin() {
 
       {/* TAB 3: LIVE PLAYER PLAYS */}
       {activeTab === "plays" && <AdminPlays markets={sortedMarkets} />}
+
+      {/* TAB 3B: RISK EXPOSURE & LOAD HEDGING (कटाई) */}
+      {activeTab === "risk" && <AdminRiskHedging markets={sortedMarkets} />}
 
       {/* TAB 4: USERS, SECURITY, PASSWORDS & BLOCKING */}
       {activeTab === "players" && (
