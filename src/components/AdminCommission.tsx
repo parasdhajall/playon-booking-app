@@ -18,6 +18,7 @@ import {
   Check,
   DollarSign,
   TrendingUp,
+  TrendingDown,
   Sparkles,
   FileText,
   Building2,
@@ -718,18 +719,18 @@ _PlayOn Official Matka Management System_`;
         </div>
       </div>
 
-      {/* 2. Top Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* 2. Top Metric Cards (5 KPI Boxes including Admin Profit/Loss) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {/* Card 1: Gross Sale */}
         <div className="rounded-xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-bold uppercase tracking-wider">Gross Sale (Turnover)</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">Gross Sale (Turnover)</span>
             <DollarSign className="h-4 w-4 text-gold" />
           </div>
           <div className="font-mono text-2xl font-black text-foreground">
             ₹{grandTotals.grossSale.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-[10px] text-muted-foreground">
             From <strong className="text-foreground">{grandTotals.totalPlays}</strong> player bets
           </div>
         </div>
@@ -737,13 +738,13 @@ _PlayOn Official Matka Management System_`;
         {/* Card 2: Total Commission (10%) */}
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-emerald-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Commission (10%)</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">Total Commission (10%)</span>
             <Percent className="h-4 w-4" />
           </div>
           <div className="font-mono text-2xl font-black text-emerald-400">
             ₹{grandTotals.totalCommission.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-[10px] text-muted-foreground">
             Agent brokerage cut
           </div>
         </div>
@@ -751,28 +752,69 @@ _PlayOn Official Matka Management System_`;
         {/* Card 3: Total Customer Winnings */}
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-rose-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Winning Claims</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">Total Winning Claims</span>
             <ArrowDownRight className="h-4 w-4" />
           </div>
           <div className="font-mono text-2xl font-black text-rose-400">
             ₹{grandTotals.totalWinnings.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-[10px] text-muted-foreground">
             Customer winning payouts
           </div>
         </div>
 
-        {/* Card 4: Total Payout (Commission + Winning) */}
-        <div className="rounded-xl border-2 border-gold/60 bg-gradient-to-br from-gold/20 via-gold/10 to-card p-4 shadow-md space-y-1">
+        {/* Card 4: Total Agent Payout */}
+        <div className="rounded-xl border border-gold/50 bg-gold/10 p-4 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-gold">
-            <span className="text-xs font-black uppercase tracking-wider">TOTAL AGENT PAYOUT</span>
-            <Coins className="h-5 w-5 text-gold animate-pulse" />
+            <span className="text-[11px] font-black uppercase tracking-wider">Total Agent Payout</span>
+            <Coins className="h-4 w-4 text-gold animate-pulse" />
           </div>
-          <div className="font-mono text-3xl font-black text-gold">
+          <div className="font-mono text-2xl font-black text-gold">
             ₹{grandTotals.totalPayableToAgents.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] font-bold text-foreground/90">
-            Commission (₹{grandTotals.totalCommission.toLocaleString("en-IN")}) + Winning (₹{grandTotals.totalWinnings.toLocaleString("en-IN")})
+          <div className="text-[10px] font-semibold text-foreground/80 truncate">
+            Commission + Winning
+          </div>
+        </div>
+
+        {/* Card 5: TOTAL ADMIN PROFIT / LOSS (DEDICATED BOX) */}
+        <div
+          className={`rounded-xl border-2 p-4 shadow-md space-y-1 col-span-2 sm:col-span-1 lg:col-span-1 ${
+            grandTotals.totalHouseProfit >= 0
+              ? "border-emerald-500/60 bg-gradient-to-br from-emerald-500/25 via-emerald-500/10 to-card"
+              : "border-rose-500/60 bg-gradient-to-br from-rose-500/25 via-rose-500/10 to-card"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className={`text-[11px] font-black uppercase tracking-wider ${
+                grandTotals.totalHouseProfit >= 0 ? "text-emerald-400" : "text-rose-400"
+              }`}
+            >
+              {grandTotals.totalHouseProfit >= 0 ? "Admin Profit (बचत)" : "Admin Loss (घाटा)"}
+            </span>
+            {grandTotals.totalHouseProfit >= 0 ? (
+              <TrendingUp className="h-5 w-5 text-emerald-400" />
+            ) : (
+              <TrendingDown className="h-5 w-5 text-rose-400" />
+            )}
+          </div>
+          <div
+            className={`font-mono text-2xl sm:text-3xl font-black ${
+              grandTotals.totalHouseProfit >= 0 ? "text-emerald-400" : "text-rose-400"
+            }`}
+          >
+            {grandTotals.totalHouseProfit >= 0 ? "+" : "-"}₹
+            {Math.abs(grandTotals.totalHouseProfit).toLocaleString("en-IN")}
+          </div>
+          <div
+            className={`text-[10px] font-bold ${
+              grandTotals.totalHouseProfit >= 0 ? "text-emerald-300/90" : "text-rose-300/90"
+            }`}
+          >
+            {grandTotals.totalHouseProfit >= 0
+              ? "Gross Sale me se Payout ke baad bachat"
+              : "Payout Gross Sale se zyada hai"}
           </div>
         </div>
       </div>
