@@ -32,6 +32,7 @@ export function AdminPlays({ markets }: { markets: Market[] }) {
   // Specific Market & Session Filter for High Volume analysis
   const [hvMarketId, setHvMarketId] = useState<string>(() => markets[0]?.id || "all");
   const [hvSession, setHvSession] = useState<"all" | "open" | "close">("all");
+  const [hvUserId, setHvUserId] = useState<string>("all");
   const [expandedSections, setExpandedSections] = useState<{ single: boolean; jodi: boolean; panna: boolean }>({
     single: false,
     jodi: false,
@@ -112,17 +113,87 @@ export function AdminPlays({ markets }: { markets: Market[] }) {
     markets.find((m) => m.id === activeHvMarketId)?.name ??
     (activeHvMarketId === "all" ? "All Markets Combined" : "—");
 
-  // Filter bets specifically for High Volume analysis on this specific market & date
+  // Filter bets specifically for High Volume analysis on this specific market, date & player
   const marketHvBets = useMemo(() => {
     return dateFilteredBets.filter((b) => {
       if (activeHvMarketId !== "all" && b.market_id !== activeHvMarketId) return false;
       if (hvSession !== "all" && b.session !== hvSession) return false;
+      if (hvUserId !== "all" && b.user_id !== hvUserId) return false;
       return true;
     });
-  }, [dateFilteredBets, activeHvMarketId, hvSession]);
+  }, [dateFilteredBets, activeHvMarketId, hvSession, hvUserId]);
 
   const marketHvTotalPoints = useMemo(() => marketHvBets.reduce((sum, b) => sum + b.points, 0), [marketHvBets]);
   const marketHvTotalPlays = marketHvBets.length;
+
+  // Individual Players High Volume Summary for the selected market & session
+  const playersVolumeSummary = useMemo(() => {
+    const playerMap = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        totalPoints: number;
+        playCount: number;
+        singleMap: Map<string, number>;
+        jodiMap: Map<string, number>;
+        pannaMap: Map<string, number>;
+      }
+    >();
+
+    for (const b of dateFilteredBets) {
+      if (activeHvMarketId !== "all" && b.market_id !== activeHvMarketId) continue;
+      if (hvSession !== "all" && b.session !== hvSession) continue;
+
+      let cur = playerMap.get(b.user_id);
+      if (!cur) {
+        cur = {
+          id: b.user_id,
+          name: b.player,
+          totalPoints: 0,
+          playCount: 0,
+          singleMap: new Map(),
+          jodiMap: new Map(),
+          pannaMap: new Map(),
+        };
+        playerMap.set(b.user_id, cur);
+      }
+
+      cur.totalPoints += b.points;
+      cur.playCount += 1;
+
+      if (b.game_type === "single" || b.game_type === "ank_bulk") {
+        cur.singleMap.set(b.number, (cur.singleMap.get(b.number) || 0) + b.points);
+      } else if (b.game_type === "jodi" || b.game_type === "jodi_bulk" || b.game_type === "family_jodi") {
+        cur.jodiMap.set(b.number, (cur.jodiMap.get(b.number) || 0) + b.points);
+      } else {
+        cur.pannaMap.set(b.number, (cur.pannaMap.get(b.number) || 0) + b.points);
+      }
+    }
+
+    return [...playerMap.values()]
+      .map((p) => {
+        const topSingle = [...p.singleMap.entries()].sort((a, b) => b[1] - a[1])[0];
+        const topJodi = [...p.jodiMap.entries()].sort((a, b) => b[1] - a[1])[0];
+        const topPanna = [...p.pannaMap.entries()].sort((a, b) => b[1] - a[1])[0];
+
+        return {
+          id: p.id,
+          name: p.name,
+          totalPoints: p.totalPoints,
+          playCount: p.playCount,
+          topSingle: topSingle ? { number: topSingle[0], points: topSingle[1] } : null,
+          topJodi: topJodi ? { number: topJodi[0], points: topJodi[1] } : null,
+          topPanna: topPanna ? { number: topPanna[0], points: topPanna[1] } : null,
+        };
+      })
+      .sort((a, b) => b.totalPoints - a.totalPoints);
+  }, [dateFilteredBets, activeHvMarketId, hvSession]);
+
+  const selectedPlayerName = useMemo(() => {
+    if (hvUserId === "all") return "All Players Combined";
+    return playersVolumeSummary.find((p) => p.id === hvUserId)?.name || "Player";
+  }, [hvUserId, playersVolumeSummary]);
 
   // 1. Single Digits (Ank 0-9) High Volume
   const highVolumeSingle = useMemo(() => {
@@ -356,6 +427,9 @@ export function AdminPlays({ markets }: { markets: Market[] }) {
                 </h3>
                 <p className="text-xs text-muted-foreground">
                   Analyzing risk for <strong className="text-gold">{targetMarketName}</strong> ({dateLabel})
+                  {hvUserId !== "all" && (
+                    <> · Filtered by Player: <strong className="text-primary font-bold">{selectedPlayerName}</strong></>
+                  )}
                 </p>
               </div>
             </div>
@@ -440,6 +514,82 @@ export function AdminPlays({ markets }: { markets: Market[] }) {
               );
             })}
           </div>
+        </div>
+
+        {/* Player Scope Selector: Overall vs Individual Player */}
+        <div className="space-y-1.5 border-t pt-2.5">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground px-0.5">
+            <span className="flex items-center gap-1.5 text-foreground font-bold">
+              <Users className="h-3.5 w-3.5 text-primary" /> Filter by Player (Individual vs Overall):
+            </span>
+            {hvUserId !== "all" && (
+              <button
+                type="button"
+                onClick={() => setHvUserId("all")}
+                className="text-[11px] text-primary hover:underline font-bold flex items-center gap-0.5 cursor-pointer"
+              >
+                ✕ Reset to All Players (Overall)
+              </button>
+            )}
+          </div>
+
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+            <button
+              type="button"
+              onClick={() => setHvUserId("all")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                hvUserId === "all"
+                  ? "bg-primary text-primary-foreground shadow-sm ring-2 ring-primary"
+                  : "border bg-secondary/80 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              👥 All Players (Overall)
+            </button>
+
+            {playersVolumeSummary.map((p) => {
+              const isSelected = hvUserId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setHvUserId(p.id)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isSelected
+                      ? "bg-gold text-slate-950 font-black shadow-md ring-2 ring-gold scale-105"
+                      : "border bg-card text-foreground hover:border-gold/60 hover:bg-secondary"
+                  }`}
+                >
+                  <span>👤 {p.name}</span>
+                  <span
+                    className={`rounded px-1.5 py-0.2 text-[10px] font-mono font-bold ${
+                      isSelected ? "bg-black/20 text-slate-950" : "bg-gold/15 text-gold border border-gold/30"
+                    }`}
+                  >
+                    ₹{p.totalPoints.toLocaleString("en-IN")}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Player Filter Indicator */}
+          {hvUserId !== "all" && (
+            <div className="rounded-lg border border-gold/40 bg-gold/10 p-2 text-xs flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🎯</span>
+                <span className="text-foreground">
+                  Showing High Volume strictly for: <strong className="text-gold font-bold">{selectedPlayerName}</strong> ({marketHvBets.length} plays • ₹{marketHvTotalPoints.toLocaleString("en-IN")})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHvUserId("all")}
+                className="text-[11px] font-bold text-gold hover:underline cursor-pointer shrink-0"
+              >
+                Back to Overall
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ===================================================================== */}
@@ -600,6 +750,149 @@ export function AdminPlays({ markets }: { markets: Market[] }) {
                   multLabel="Panna"
                 />
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* ===================================================================== */}
+        {/* 4. INDIVIDUAL PLAYERS HIGH VOLUME BREAKDOWN TABLE                     */}
+        {/* ===================================================================== */}
+        <div className="rounded-xl border border-border/80 bg-background/60 p-4 space-y-3">
+          <div className="flex items-center justify-between border-b pb-2">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 text-sm font-bold text-primary">
+                👥
+              </span>
+              <div>
+                <h4 className="font-display text-base tracking-wide text-foreground flex items-center gap-2">
+                  Individual Players Volume Breakdown
+                  <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground font-bold">
+                    {playersVolumeSummary.length} Active Players
+                  </span>
+                </h4>
+                <p className="text-[11px] text-muted-foreground">
+                  Compare total exposure and each player&apos;s highest loaded Single, Jodi, and Panna. Click &quot;View High Volume&quot; to filter above.
+                </p>
+              </div>
+            </div>
+            {hvUserId !== "all" && (
+              <button
+                type="button"
+                onClick={() => setHvUserId("all")}
+                className="text-xs font-bold text-primary hover:underline cursor-pointer"
+              >
+                ✕ Reset to All Players
+              </button>
+            )}
+          </div>
+
+          {playersVolumeSummary.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-3 text-center">
+              No player bets recorded for {targetMarketName} on this date.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border bg-card/80">
+              <table className="w-full text-xs">
+                <thead className="bg-secondary/70 text-left text-muted-foreground">
+                  <tr>
+                    <th className="p-2.5">Player Name</th>
+                    <th className="text-right p-2.5">Total Bet (₹)</th>
+                    <th className="text-center p-2.5">Plays</th>
+                    <th className="p-2.5">Top Single (Ank)</th>
+                    <th className="p-2.5">Top Jodi</th>
+                    <th className="p-2.5">Top Panna</th>
+                    <th className="text-center p-2.5 pr-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {playersVolumeSummary.map((p) => {
+                    const isSelected = hvUserId === p.id;
+                    return (
+                      <tr
+                        key={p.id}
+                        className={`transition-colors ${
+                          isSelected
+                            ? "bg-gold/15 font-semibold text-foreground ring-1 ring-inset ring-gold/40"
+                            : "hover:bg-secondary/40"
+                        }`}
+                      >
+                        <td className="p-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm">👤</span>
+                            <span className="font-bold text-foreground">{p.name}</span>
+                            {isSelected && (
+                              <span className="rounded bg-gold text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2">
+                                Active Filter
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-2.5 text-right font-mono font-bold text-gold">
+                          ₹{p.totalPoints.toLocaleString("en-IN")}
+                        </td>
+                        <td className="p-2.5 text-center font-mono text-muted-foreground">
+                          {p.playCount}
+                        </td>
+                        <td className="p-2.5">
+                          {p.topSingle ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-secondary px-2 py-0.5 font-mono text-[11px]">
+                              <strong className="text-primary font-bold text-xs">{p.topSingle.number}</strong>
+                              <span className="text-muted-foreground text-[10px]">
+                                (₹{p.topSingle.points.toLocaleString("en-IN")})
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="p-2.5">
+                          {p.topJodi ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-secondary px-2 py-0.5 font-mono text-[11px]">
+                              <strong className="text-primary font-bold text-xs">{p.topJodi.number}</strong>
+                              <span className="text-muted-foreground text-[10px]">
+                                (₹{p.topJodi.points.toLocaleString("en-IN")})
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="p-2.5">
+                          {p.topPanna ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-secondary px-2 py-0.5 font-mono text-[11px]">
+                              <strong className="text-primary font-bold text-xs">{p.topPanna.number}</strong>
+                              <span className="text-muted-foreground text-[10px]">
+                                (₹{p.topPanna.points.toLocaleString("en-IN")})
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="p-2.5 pr-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                setHvUserId("all");
+                              } else {
+                                setHvUserId(p.id);
+                              }
+                            }}
+                            className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-gold text-slate-950 hover:bg-gold/90 shadow-sm"
+                                : "border border-primary/40 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
+                            }`}
+                          >
+                            {isSelected ? "✕ Clear Filter" : "🔍 View High Volume"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
