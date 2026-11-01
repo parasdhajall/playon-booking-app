@@ -248,10 +248,11 @@ function PlayPage() {
         const existingIdx = updated.findIndex(
           (x) => x.game === item.game && x.session === item.session && x.number === item.number
         );
-        if (existingIdx !== -1) {
+        const existingItem = existingIdx !== -1 ? updated[existingIdx] : undefined;
+        if (existingItem && existingIdx !== -1) {
           updated[existingIdx] = {
-            ...updated[existingIdx],
-            points: updated[existingIdx].points + item.points,
+            ...existingItem,
+            points: existingItem.points + item.points,
           };
         } else {
           updated.push({
@@ -1239,7 +1240,10 @@ function PlayPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => selectFamily(PANEL_FAMILIES_35[6]) /* 123 */}
+                    onClick={() => {
+                      const f = PANEL_FAMILIES_35[6];
+                      if (f) selectFamily(f);
+                    } /* 123 */}
                     className="text-xs font-semibold"
                   >
                     Try Example Family: 123 (8 Pannas)
@@ -1278,7 +1282,7 @@ function PlayPage() {
           <div className="space-y-2">
             {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((row) => (
               <div key={row} className="flex flex-wrap gap-1.5 justify-between">
-                {JODI_BY_ROW[row].map((j) => {
+                {JODI_BY_ROW[row]?.map((j) => {
                   const isSel = selectedNumber === j;
                   return (
                     <button

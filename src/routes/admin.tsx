@@ -29,6 +29,8 @@ import {
   ArrowDownRight,
   ExternalLink,
   ShieldAlert,
+  UserPlus,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +41,7 @@ import { marketsQuery } from "./index";
 import { resultLabel, fmtTime, marketStatus, fmtIST, gameLabel, canMarketDeclareOpen, canMarketDeclareClose, isMarketOpenForAdmin, sortMarketsForAdmin } from "@/lib/matka";
 import { AdminPlays } from "@/components/AdminPlays";
 import { AdminRiskHedging } from "@/components/AdminRiskHedging";
+import { adminCreatePlayerAccount } from "@/lib/adminAuth";
 import { fetchRsbossLiveResults, type MarketLiveResult } from "@/lib/rsbossFetcher";
 
 export const Route = createFileRoute("/admin")({
@@ -109,6 +112,16 @@ function Admin() {
   const [passwordModalUser, setPasswordModalUser] = useState<AdminUser | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [userSearch, setUserSearch] = useState("");
+
+  // Create Authorized Player Dialog State
+  const [isCreatePlayerOpen, setIsCreatePlayerOpen] = useState(false);
+  const [newPlayerForm, setNewPlayerForm] = useState({
+    name: "",
+    phone: "",
+    password: "password123",
+    initialPoints: 0,
+  });
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
 
   // P&L Date Filter State
   const now = new Date();
@@ -255,30 +268,36 @@ function Admin() {
       if (b.status === "won") totalWins += 1;
 
       // Market
-      if (!marketMap[b.market_id]) {
-        marketMap[b.market_id] = { collection: 0, payout: 0, net: 0, betsCount: 0, wonCount: 0 };
+      let mm = marketMap[b.market_id];
+      if (!mm) {
+        mm = { collection: 0, payout: 0, net: 0, betsCount: 0, wonCount: 0 };
+        marketMap[b.market_id] = mm;
       }
-      marketMap[b.market_id].collection += pts;
-      marketMap[b.market_id].payout += pay;
-      marketMap[b.market_id].betsCount += 1;
-      if (b.status === "won") marketMap[b.market_id].wonCount += 1;
+      mm.collection += pts;
+      mm.payout += pay;
+      mm.betsCount += 1;
+      if (b.status === "won") mm.wonCount += 1;
 
       // Game Type
       const gt = b.game_type || "other";
-      if (!gameMap[gt]) {
-        gameMap[gt] = { collection: 0, payout: 0, net: 0, count: 0 };
+      let gm = gameMap[gt];
+      if (!gm) {
+        gm = { collection: 0, payout: 0, net: 0, count: 0 };
+        gameMap[gt] = gm;
       }
-      gameMap[gt].collection += pts;
-      gameMap[gt].payout += pay;
-      gameMap[gt].count += 1;
+      gm.collection += pts;
+      gm.payout += pay;
+      gm.count += 1;
     }
 
     // Finalize nets
     for (const k in marketMap) {
-      marketMap[k].net = marketMap[k].collection - marketMap[k].payout;
+      const entry = marketMap[k];
+      if (entry) entry.net = entry.collection - entry.payout;
     }
     for (const k in gameMap) {
-      gameMap[k].net = gameMap[k].collection - gameMap[k].payout;
+      const entry = gameMap[k];
+      if (entry) entry.net = entry.collection - entry.payout;
     }
 
     const netHousePnL = totalCollection - totalPayout;
@@ -437,6 +456,50 @@ function Admin() {
       return;
     }
     toast.success(willBlock ? `Account for ${u.email} is now BLOCKED!` : `Account for ${u.email} is now UNBLOCKED!`);
+    refresh();
+  };
+
+  const handleCreatePlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPhone = newPlayerForm.phone.replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    if (!newPlayerForm.name.trim()) {
+      toast.error("Please enter player's name");
+      return;
+    }
+    if (newPlayerForm.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsCreatingPlayer(true);
+    const res = await adminCreatePlayerAccount({
+      displayName: newPlayerForm.name.trim(),
+      phone: cleanPhone,
+      password: newPlayerForm.password,
+      initialPoints: Number(newPlayerForm.initialPoints) || 0,
+    });
+    setIsCreatingPlayer(false);
+
+    if (!res.success) {
+      toast.error(res.error || "Failed to create player account");
+      return;
+    }
+
+    toast.success(
+      `🎉 Player "${newPlayerForm.name}" (+91 ${cleanPhone}) authorized! Login Password: ${newPlayerForm.password}`,
+      { duration: 8000 }
+    );
+    setIsCreatePlayerOpen(false);
+    setNewPlayerForm({
+      name: "",
+      phone: "",
+      password: "password123",
+      initialPoints: 0,
+    });
     refresh();
   };
 
@@ -869,7 +932,8 @@ function Admin() {
                   : live?.closePanna;
 
               const isMarketClosed = !isMarketOpenForAdmin(m);
-              const isFirstClosed = isMarketClosed && index > 0 && isMarketOpenForAdmin(sortedMarkets[index - 1]);
+              const prevMarket = sortedMarkets[index - 1];
+              const isFirstClosed = isMarketClosed && index > 0 && prevMarket ? isMarketOpenForAdmin(prevMarket) : false;
 
               return (
                 <div key={m.id} className="space-y-4">
@@ -1409,6 +1473,16 @@ function Admin() {
                   className="pl-8 h-9 text-xs"
                 />
               </div>
+
+              {/* Add Authorized Player Button */}
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsCreatePlayerOpen(true)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-1.5 shadow h-9 shrink-0"
+              >
+                <UserPlus className="h-3.5 w-3.5" /> ➕ Add Player
+              </Button>
             </div>
           </div>
 
@@ -1591,6 +1665,127 @@ function Admin() {
                 Update Password
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE AUTHORIZED PLAYER MODAL */}
+      {isCreatePlayerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl border bg-card p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/30">
+                  <UserPlus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-display text-xl tracking-wide text-foreground">
+                    Create Authorized Player
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Only players created here can sign in to PlayOn.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreatePlayerOpen(false)}
+                className="rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePlayer} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">Player Name *</label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Ramesh Bhai, Sunil Agent"
+                  value={newPlayerForm.name}
+                  onChange={(e) => setNewPlayerForm({ ...newPlayerForm, name: e.target.value })}
+                  required
+                  className="text-xs h-9"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">10-Digit Mobile Number *</label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 flex items-center text-xs font-bold text-muted-foreground border-r pr-2">
+                    +91
+                  </div>
+                  <Input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="e.g. 9876543210"
+                    value={newPlayerForm.phone}
+                    onChange={(e) =>
+                      setNewPlayerForm({
+                        ...newPlayerForm,
+                        phone: e.target.value.replace(/\D/g, "").slice(0, 10),
+                      })
+                    }
+                    required
+                    className="pl-14 text-xs font-mono font-bold tracking-wider h-9"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">Player will use this 10-digit number as Login ID</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">Login Password *</label>
+                <Input
+                  type="text"
+                  placeholder="Min 6 characters (e.g. password123)"
+                  value={newPlayerForm.password}
+                  onChange={(e) => setNewPlayerForm({ ...newPlayerForm, password: e.target.value })}
+                  required
+                  className="text-xs font-mono h-9"
+                />
+                <p className="text-[10px] text-muted-foreground">Share this password with the player</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">Initial Opening Balance (₹)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={50}
+                  placeholder="0"
+                  value={newPlayerForm.initialPoints || ""}
+                  onChange={(e) =>
+                    setNewPlayerForm({
+                      ...newPlayerForm,
+                      initialPoints: Math.max(0, Number(e.target.value) || 0),
+                    })
+                  }
+                  className="text-xs font-mono font-bold h-9"
+                />
+                <p className="text-[10px] text-muted-foreground">Optional: credits points to player's wallet upon creation</p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsCreatePlayerOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isCreatingPlayer}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs"
+                >
+                  {isCreatingPlayer ? "Authorizing..." : "Create & Authorize Player"}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

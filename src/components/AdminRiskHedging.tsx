@@ -231,7 +231,7 @@ export function AdminRiskHedging({ markets }: AdminRiskHedgingProps) {
   const metrics = useMemo(() => {
     const totalPassedPoints = exposures.reduce((acc, e) => acc + e.passedPoints, 0);
     const totalLiabilityShielded = exposures.reduce((acc, e) => acc + e.liabilityShielded, 0);
-    const worstCaseUnhedged = exposures.length > 0 ? exposures[0].grossLiability : 0;
+    const worstCaseUnhedged = exposures.length > 0 ? exposures[0]?.grossLiability ?? 0 : 0;
     const worstCaseHouseKept = exposures.length > 0 ? Math.max(...exposures.map((e) => e.houseNetLiability)) : 0;
 
     return {
@@ -813,3 +813,4 @@ export function AdminRiskHedging({ markets }: AdminRiskHedgingProps) {
     </div>
   );
 }
+

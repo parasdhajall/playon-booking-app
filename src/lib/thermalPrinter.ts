@@ -97,7 +97,7 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = "";
   const len = bytes.byteLength;
   for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+    binary += String.fromCharCode(bytes[i] ?? 0);
   }
   return btoa(binary);
 }
@@ -194,6 +194,13 @@ class BluetoothPrinterManager {
         const target = devices.find((d) =>
           /print|pos|mtp|inner|rp|mpt|veer|seznik|bluetooth/i.test(d.name)
         ) || devices[0];
+
+        if (!target) {
+          return {
+            success: false,
+            message: "Koi paired Bluetooth printer nahi mila. Phone settings me pehle printer pair karein.",
+          };
+        }
 
         this.deviceName = target.name;
         this.deviceAddress = target.address;

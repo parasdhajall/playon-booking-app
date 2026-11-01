@@ -237,7 +237,7 @@ export function getPlayerDisplayName(
 
   // 2. User metadata from auth signup (display_name, full_name, name)
   const meta = user?.user_metadata;
-  const metaName = (meta?.display_name || meta?.full_name || meta?.name)?.toString().trim();
+  const metaName = (meta?.["display_name"] || meta?.["full_name"] || meta?.["name"])?.toString().trim();
   if (metaName && !metaName.includes("@") && !/^\d{10}$/.test(metaName)) {
     return metaName;
   }
@@ -252,8 +252,8 @@ export function getPlayerDisplayName(
   const candidate = metaName || profName || "";
   if (candidate) {
     if (candidate.includes("@")) {
-      const part = candidate.split("@")[0].trim();
-      if (!/^\d+$/.test(part)) return part;
+      const part = candidate.split("@")[0]?.trim();
+      if (part && !/^\d+$/.test(part)) return part;
     } else if (!/^\d{10}$/.test(candidate)) {
       return candidate;
     }
@@ -261,8 +261,8 @@ export function getPlayerDisplayName(
 
   // 5. Fallback from email prefix if it's not purely a phone number
   if (user?.email) {
-    const part = user.email.split("@")[0].trim();
-    if (!/^\d+$/.test(part)) {
+    const part = user.email.split("@")[0]?.trim();
+    if (part && !/^\d+$/.test(part)) {
       return part;
     }
   }

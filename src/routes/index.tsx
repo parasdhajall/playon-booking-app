@@ -61,9 +61,7 @@ function Index() {
     const isOpen = st.state === "open" && !done;
     const badge = isOpen
       ? "bg-success/20 text-success border-success/30"
-      : st.state === "upcoming"
-        ? "bg-accent/20 text-accent border-accent/30"
-        : "bg-destructive/20 text-destructive border-destructive/30";
+      : "bg-destructive/20 text-destructive border-destructive/30";
 
     return (
       <article

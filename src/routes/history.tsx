@@ -111,7 +111,7 @@ function History() {
       timeStr,
       items: todayBets.map((b) => ({
         gameLabel: `${b.markets?.name ? b.markets.name.slice(0, 4) + ' ' : ''}${gameLabel(b.game_type)}`,
-        session: b.session,
+        session: (b.session === "close" ? "close" : "open") as "open" | "close",
         number: b.number,
         points: b.points,
       })),

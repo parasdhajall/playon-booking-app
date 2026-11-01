@@ -64,10 +64,10 @@ function parseResultEntry(rawName: string, rawVal: string, nowIso: string): Mark
     return {
       marketName: matchedKey,
       rawResult: cleanVal,
-      openPanna: fullMatch[1],
-      openDigit: fullMatch[2][0] || null,
-      closeDigit: fullMatch[2][1] || null,
-      closePanna: fullMatch[3],
+      openPanna: fullMatch[1] ?? null,
+      openDigit: fullMatch[2]?.[0] ?? null,
+      closeDigit: fullMatch[2]?.[1] ?? null,
+      closePanna: fullMatch[3] ?? null,
       isOpenDeclared: true,
       isCloseDeclared: true,
       updatedAt: nowIso,
@@ -76,8 +76,8 @@ function parseResultEntry(rawName: string, rawVal: string, nowIso: string): Mark
     return {
       marketName: matchedKey,
       rawResult: cleanVal,
-      openPanna: halfMatch[1],
-      openDigit: halfMatch[2][0] || null,
+      openPanna: halfMatch[1] ?? null,
+      openDigit: halfMatch[2]?.[0] ?? null,
       closeDigit: null,
       closePanna: null,
       isOpenDeclared: true,
@@ -117,9 +117,11 @@ export const fetchRsbossLiveResults = createServerFn({ method: "GET" }).handler(
         const reH4 = /<h4>\s*([^<]+?)\s*<\/h4>\s*<span>\s*([^<]+?)\s*<\/span>/gi;
         let m;
         while ((m = reH4.exec(html)) !== null) {
-          const entry = parseResultEntry(m[1], m[2], nowIso);
-          if (entry && !results[entry.marketName]) {
-            results[entry.marketName] = entry;
+          if (m[1] && m[2]) {
+            const entry = parseResultEntry(m[1], m[2], nowIso);
+            if (entry && !results[entry.marketName]) {
+              results[entry.marketName] = entry;
+            }
           }
         }
 
@@ -127,9 +129,11 @@ export const fetchRsbossLiveResults = createServerFn({ method: "GET" }).handler(
         const reH8 =
           /<span[^>]*class=['"]h8['"][^>]*>\s*([^<]+?)\s*<\/span>\s*<span[^>]*class=['"]h9['"][^>]*>\s*([^<]+?)\s*<\/span>/gi;
         while ((m = reH8.exec(html)) !== null) {
-          const entry = parseResultEntry(m[1], m[2], nowIso);
-          if (entry && !results[entry.marketName]) {
-            results[entry.marketName] = entry;
+          if (m[1] && m[2]) {
+            const entry = parseResultEntry(m[1], m[2], nowIso);
+            if (entry && !results[entry.marketName]) {
+              results[entry.marketName] = entry;
+            }
           }
         }
 
@@ -159,9 +163,11 @@ export const fetchRsbossLiveResults = createServerFn({ method: "GET" }).handler(
         let m;
 
         while ((m = re.exec(html)) !== null) {
-          const entry = parseResultEntry(m[1], m[2], nowIso);
-          if (entry && !results[entry.marketName]) {
-            results[entry.marketName] = entry;
+          if (m[1] && m[2]) {
+            const entry = parseResultEntry(m[1], m[2], nowIso);
+            if (entry && !results[entry.marketName]) {
+              results[entry.marketName] = entry;
+            }
           }
         }
 
