@@ -34,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { fmtIST, gameLabel } from "@/lib/matka";
 import { PrinterStatusBadge } from "./PrinterStatusBadge";
-import { printerManager, usePrinter, printViaSystem, type AgentHisabPrintData } from "@/lib/thermalPrinter";
+import { printerManager, usePrinter, printViaSystem, printAgentHisabViaSystem, type AgentHisabPrintData } from "@/lib/thermalPrinter";
 
 type Market = { id: string; name: string };
 
@@ -83,6 +83,7 @@ type AgentSummary = {
 
 export function AdminCommission({ markets }: { markets: Market[] }) {
   const qc = useQueryClient();
+  const { isConnected: isPrinterConnected } = usePrinter();
 
   // Date Filters
   const now = new Date();
@@ -551,8 +552,6 @@ _PlayOn Official Matka Management System_`;
 
   const handleThermalPrint = async () => {
     if (!selectedAgentSlip || !activeSlipData) return;
-    setIsPrintingThermal(true);
-    toast.info("Sending parchi to thermal printer...");
 
     const data: AgentHisabPrintData = {
       agentName: selectedAgentSlip.name,
@@ -567,20 +566,20 @@ _PlayOn Official Matka Management System_`;
       totalAmount: activeSlipData.totalPayableToAgent,
     };
 
-    const res = await printerManager.printAgentHisab(data);
-    setIsPrintingThermal(false);
-
-    if (res.success) {
-      toast.success(res.message);
-    } else {
+    if (isPrinterConnected) {
+      setIsPrintingThermal(true);
+      toast.info("Sending parchi to thermal printer...");
+      const res = await printerManager.printAgentHisab(data);
+      setIsPrintingThermal(false);
+      if (res.success) {
+        toast.success(res.message);
+        return;
+      }
       toast.error(res.message);
-      toast("Tip: Bluetooth printer connect nahi hai toh 'System Print' se 58mm slip print karein.", {
-        action: {
-          label: "System Print",
-          onClick: () => printViaSystem(),
-        },
-      });
     }
+
+    // Direct clean 58mm thermal print via isolated iframe (never blank!)
+    printAgentHisabViaSystem(data);
   };
 
   // Open slip for specific market

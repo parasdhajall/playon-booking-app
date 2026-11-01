@@ -13,6 +13,7 @@ import {
   printerManager,
   usePrinter,
   printViaSystem,
+  printReceiptHtml,
 } from "@/lib/thermalPrinter";
 import { PrinterStatusBadge } from "./PrinterStatusBadge";
 
@@ -62,9 +63,18 @@ export function ThermalReceiptModal({
       toast("Tip: You can also tap 'System Print' to print via Android default printer service.", {
         action: {
           label: "System Print",
-          onClick: () => printViaSystem(),
+          onClick: () => handleSystemPrint(),
         },
       });
+    }
+  };
+
+  const handleSystemPrint = () => {
+    const el = document.getElementById("thermal-receipt");
+    if (el) {
+      printReceiptHtml(el.innerHTML);
+    } else {
+      printViaSystem();
     }
   };
 
@@ -200,7 +210,7 @@ export function ThermalReceiptModal({
               <Button
                 type="button"
                 variant="outline"
-                onClick={printViaSystem}
+                onClick={handleSystemPrint}
                 className="flex-1 h-10 text-xs font-semibold rounded-xl border-border flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Smartphone className="h-3.5 w-3.5" />
