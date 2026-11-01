@@ -38,7 +38,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProfile } from "@/hooks/useAuth";
 import { marketsQuery } from "./index";
-import { resultLabel, fmtTime, marketStatus, fmtIST, gameLabel, canMarketDeclareOpen, canMarketDeclareClose, isMarketOpenForAdmin, sortMarketsForAdmin } from "@/lib/matka";
+import { resultLabel, fmtTime, marketStatus, fmtIST, gameLabel, canMarketDeclareOpen, canMarketDeclareClose, isMarketOpenForAdmin, sortMarketsForAdmin, isMarketScheduledToday } from "@/lib/matka";
 import { AdminPlays } from "@/components/AdminPlays";
 import { AdminRiskHedging } from "@/components/AdminRiskHedging";
 import { adminCreatePlayerAccount } from "@/lib/adminAuth";
@@ -378,6 +378,7 @@ function Admin() {
     const checkAndAutoDeclare = async () => {
       for (const m of markets) {
         if (!m.active) continue;
+        if (!isMarketScheduledToday(m.name).isRunningToday) continue; // Skip markets closed today on weekly schedule
         const live = rsbossData?.results?.[m.name];
         if (!live) continue;
 
@@ -920,6 +921,9 @@ function Admin() {
               const live = rsbossData?.results?.[m.name];
               const pnl = marketPnLMap[m.id] || { collection: 0, payout: 0, net: 0, betsCount: 0 };
 
+              const todaySched = isMarketScheduledToday(m.name);
+              const isClosedToday = !todaySched.isRunningToday;
+
               const canOpen = canMarketDeclareOpen(m);
               const canClose = canMarketDeclareClose(m);
               const isSessionTimePassed = session === "open" ? canOpen : canClose;
@@ -951,9 +955,14 @@ function Admin() {
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
                     <div className="flex flex-wrap items-center gap-3">
                       <h2 className="font-display text-2xl tracking-wide">{m.name}</h2>
+                      <span className="text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border/60" title="Weekly schedule">
+                        📅 {todaySched.scheduleLabel}
+                      </span>
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-semibold border ${
-                          isUnopenedWithOldResult
+                          isClosedToday
+                            ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                            : isUnopenedWithOldResult
                             ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
                             : !canOpen && !m.open_panna
                             ? "bg-primary/20 text-primary border-primary/30"
@@ -962,7 +971,9 @@ function Admin() {
                             : "bg-destructive/20 text-destructive border-destructive/30"
                         }`}
                       >
-                        {isUnopenedWithOldResult
+                        {isClosedToday
+                          ? `🗓️ Closed Today (${todaySched.currentDayName} Off — ${todaySched.scheduleLabel})`
+                          : isUnopenedWithOldResult
                           ? "⚠️ Unopened (Has Old Result — Click Reset Day)"
                           : !canOpen && !m.open_panna
                           ? `🕒 Opens at ${fmtTime(m.open_time)}`
@@ -1017,7 +1028,11 @@ function Admin() {
                           {live.rawResult}
                         </span>
                         <span className="text-[11px] text-muted-foreground">
-                          {!canOpen ? (
+                          {isClosedToday ? (
+                            <span className="text-amber-400 font-medium">
+                              (Market closed on {todaySched.currentDayName} — Live draw resumes on regular working days)
+                            </span>
+                          ) : !canOpen ? (
                             <span className="text-amber-400 font-medium">
                               (Old / Yesterday's result — Market opens at {fmtTime(m.open_time)})
                             </span>
@@ -1034,8 +1049,8 @@ function Admin() {
                         </span>
                       </div>
 
-                      {/* 1-Click Auto Declare Button ONLY IF session time has actually arrived! */}
-                      {!done && suggestedPanna && isSessionTimePassed && (
+                      {/* 1-Click Auto Declare Button ONLY IF session time has actually arrived AND market runs today! */}
+                      {!done && suggestedPanna && isSessionTimePassed && !isClosedToday && (
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"

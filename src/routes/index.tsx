@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Clock, Play, Zap, Smartphone, History } from "lucide-react";
+import { Clock, Play, Zap, Smartphone, History, Calendar, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { fmtTime, resultLabel, marketStatus, canMarketDeclareOpen, isMarketOpen } from "@/lib/matka";
+import { fmtTime, resultLabel, marketStatus, canMarketDeclareOpen, isMarketOpen, isMarketScheduledToday } from "@/lib/matka";
 import { useAuth, useTodayExpense } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/")({
@@ -51,6 +51,7 @@ function Index() {
   );
 
   const renderMarketCard = (m: any) => {
+    const sched = isMarketScheduledToday(m.name);
     const canOpen = canMarketDeclareOpen(m);
     // If market's open session for today hasn't arrived yet, any open/close panna is from yesterday
     const displayOpen = canOpen ? m.open_panna : null;
@@ -58,7 +59,7 @@ function Index() {
 
     const st = marketStatus(m);
     const done = !canOpen ? false : !!displayClose;
-    const isOpen = st.state === "open" && !done;
+    const isOpen = st.state === "open" && !done && sched.isRunningToday;
     const badge = isOpen
       ? "bg-success/20 text-success border-success/30"
       : "bg-destructive/20 text-destructive border-destructive/30";
@@ -71,10 +72,15 @@ function Index() {
         {/* Header: Market Name and Live Status */}
         <div>
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-display text-2xl tracking-wide text-foreground">{m.name}</h3>
+            <div>
+              <h3 className="font-display text-2xl tracking-wide text-foreground">{m.name}</h3>
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground mt-0.5">
+                <Calendar className="h-3 w-3 text-primary/70" /> {sched.scheduleLabel}
+              </span>
+            </div>
             <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge}`}>
               {isOpen && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />}
-              {done ? "Results Declared" : st.note}
+              {!sched.isRunningToday ? `🚫 ${st.note}` : done ? "Results Declared" : st.note}
             </span>
           </div>
 
@@ -97,18 +103,28 @@ function Index() {
             </span>
           </div>
 
-          {/* Direct Play Button - NO Chart button */}
-          <Button
-            asChild
-            className="w-full font-semibold shadow-sm"
-            disabled={!isOpen}
-            variant={isOpen ? "default" : "secondary"}
-          >
-            <Link to="/play/$marketId" params={{ marketId: m.id }} className="flex items-center justify-center gap-2">
-              <Play className="h-4 w-4 fill-current" />
-              {isOpen ? "Play Now" : done ? "Closed" : "Upcoming"}
-            </Link>
-          </Button>
+          {/* Direct Play Button */}
+          {isOpen ? (
+            <Button
+              asChild
+              className="w-full font-semibold shadow-sm"
+              variant="default"
+            >
+              <Link to="/play/$marketId" params={{ marketId: m.id }} className="flex items-center justify-center gap-2">
+                <Play className="h-4 w-4 fill-current" />
+                Play Now
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              disabled
+              className="w-full font-semibold shadow-sm opacity-60 cursor-not-allowed"
+              variant="secondary"
+            >
+              <Lock className="h-3.5 w-3.5 mr-1.5" />
+              {!sched.isRunningToday ? `Closed (${sched.currentDayName} Off)` : done ? "Closed" : "Upcoming"}
+            </Button>
+          )}
         </div>
       </article>
     );

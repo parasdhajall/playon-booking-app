@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, Clock, X, ShoppingBag, Trash2, Plus, CheckCircle2, Printer, Layers, Sparkles, Table, Check, Search, Info, Play } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, X, ShoppingBag, Trash2, Plus, CheckCircle2, Printer, Layers, Sparkles, Table, Check, Search, Info, Play, AlertCircle, AlertTriangle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,7 +26,7 @@ import {
 } from "@/lib/thermalPrinter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProfile, useTodayExpense } from "@/hooks/useAuth";
-import { GAMES, PLAYABLE, type GameType, fmtTime, resultLabel, isOpenPast, isClosePast, getPlayerDisplayName, canMarketDeclareOpen } from "@/lib/matka";
+import { GAMES, PLAYABLE, type GameType, fmtTime, resultLabel, isOpenPast, isClosePast, getPlayerDisplayName, canMarketDeclareOpen, isMarketScheduledToday } from "@/lib/matka";
 import {
   SINGLE_PANNA_BY_ANK,
   DOUBLE_PANNA_BY_ANK,
@@ -130,10 +130,13 @@ function PlayPage() {
   }).format(new Date());
 
   const g = GAMES[game];
+  const todaySched = m?.name ? isMarketScheduledToday(m.name) : { isRunningToday: true, scheduleLabel: "7 Days", currentDayName: "Today", reason: undefined };
+  const isClosedToday = !todaySched.isRunningToday;
+
   // Check if Open timing has passed or open result declared
-  const openClosed = m ? isOpenPast(m) : false;
-  // Check if Close timing has passed or close result declared
-  const marketClosed = m ? isClosePast(m) : false;
+  const openClosed = m ? (isOpenPast(m) || isClosedToday) : false;
+  // Check if Close timing has passed or close result declared, or if market is closed today on weekly schedule
+  const marketClosed = m ? (isClosePast(m) || isClosedToday) : false;
 
   // If Open timing has passed or game is close-only, session MUST be "close"
   const effSession: "open" | "close" = g.closeOnly ? "close" : openClosed ? "close" : session;
@@ -236,6 +239,10 @@ function PlayPage() {
 
   // Helper to add items into Bucket
   const addToBucket = (newItems: Omit<BucketItem, "id">[]): boolean => {
+    if (isClosedToday) {
+      toast.error(`${m?.name} is closed today (${todaySched.currentDayName} Holiday). Bets cannot be placed.`);
+      return false;
+    }
     if (marketClosed) {
       toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
       return false;
@@ -588,6 +595,11 @@ function PlayPage() {
       return;
     }
 
+    if (isClosedToday) {
+      toast.error(`Cannot place plays: ${m?.name} is closed today (${todaySched.currentDayName} Holiday).`);
+      return;
+    }
+
     if (marketClosed) {
       toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
       return;
@@ -695,6 +707,11 @@ function PlayPage() {
     if (!user) {
       toast.error("Please sign in to place plays");
       navigate({ to: "/auth" });
+      return;
+    }
+
+    if (isClosedToday) {
+      toast.error(`Cannot place plays: ${m?.name} is closed today (${todaySched.currentDayName} Holiday).`);
       return;
     }
 
@@ -820,9 +837,24 @@ function PlayPage() {
             <Clock className="h-3 w-3 text-primary" /> {fmtTime(m.open_time)} – {fmtTime(m.close_time)}
           </span>
           <span className="flex items-center gap-1 font-medium text-foreground">
-            <Calendar className="h-3 w-3 text-primary" /> {todayIST}
+            <Calendar className="h-3 w-3 text-primary" /> {todaySched.scheduleLabel}
           </span>
         </div>
+
+        {/* Closed on Sunday / Holiday Alert Banner */}
+        {isClosedToday && (
+          <div className="mt-3 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-rose-400 flex items-start gap-2.5 shadow-sm">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-400" />
+            <div className="space-y-0.5">
+              <div className="font-bold text-xs">
+                {m.name} is CLOSED TODAY ({todaySched.currentDayName} Holiday)
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                This market operates on <strong className="text-foreground">{todaySched.scheduleLabel}</strong>. Bets cannot be placed on holidays. Next draw will open on regular working days.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Live Market Result */}
         <div className="mt-2 text-center rounded-lg bg-background/60 py-1.5">

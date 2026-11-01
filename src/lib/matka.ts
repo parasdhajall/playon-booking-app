@@ -55,7 +55,92 @@ export const toMin = (t?: string | null) => {
   return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
 };
 
-export function isOpenPast(m: { open_time: string; close_time: string; open_panna?: string | null }) {
+// 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
+export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export interface MarketScheduleInfo {
+  openDays: DayOfWeek[];
+  label: string; // e.g. "Mon - Sat"
+}
+
+// Industry Standard Satta Matka Operating Days (Verified with official Mumbai/Kalyan boards)
+export const DEFAULT_MARKET_SCHEDULES: Record<string, MarketScheduleInfo> = {
+  // Mon - Sat (Sunday OFF)
+  KALYAN: { openDays: [1, 2, 3, 4, 5, 6], label: "Mon - Sat" },
+  "TIME BAZAR": { openDays: [1, 2, 3, 4, 5, 6], label: "Mon - Sat" },
+  "KALYAN NIGHT": { openDays: [1, 2, 3, 4, 5, 6], label: "Mon - Sat" },
+  "KALYAN MORNING": { openDays: [1, 2, 3, 4, 5, 6], label: "Mon - Sat" },
+
+  // Mon - Fri (Saturday & Sunday OFF)
+  "MAIN BAZAR": { openDays: [1, 2, 3, 4, 5], label: "Mon - Fri" },
+  "RAJDHANI DAY": { openDays: [1, 2, 3, 4, 5], label: "Mon - Fri" },
+  "RAJDHANI NIGHT": { openDays: [1, 2, 3, 4, 5], label: "Mon - Fri" },
+
+  // 7 Days (Mon - Sun)
+  SRIDEVI: { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "SRIDEVI NIGHT": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "MADHUR DAY": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "MADHUR NIGHT": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "MILAN DAY": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "MILAN NIGHT": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "MILAN MORNING": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  PADMAVATI: { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "PADMAVATI NIGHT": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "SUPREME DAY": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "SUPREME NIGHT": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+};
+
+export function getISTDayOfWeek(): DayOfWeek {
+  const now = new Date();
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+  }).format(now);
+  const map: Record<string, DayOfWeek> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  return map[weekday] ?? (now.getDay() as DayOfWeek);
+}
+
+export function isMarketScheduledToday(marketName?: string | null): {
+  isRunningToday: boolean;
+  reason?: string | undefined;
+  scheduleLabel: string;
+  currentDayName: string;
+} {
+  const clean = (marketName || "").trim().toUpperCase();
+  let sched = DEFAULT_MARKET_SCHEDULES[clean];
+  if (!sched) {
+    if (clean.includes("MAIN BAZAR") || clean.includes("RAJDHANI")) {
+      sched = { openDays: [1, 2, 3, 4, 5], label: "Mon - Fri" };
+    } else if (clean.includes("KALYAN") || clean.includes("TIME BAZAR")) {
+      sched = { openDays: [1, 2, 3, 4, 5, 6], label: "Mon - Sat" };
+    } else {
+      sched = { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" };
+    }
+  }
+
+  const istDay = getISTDayOfWeek();
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const currentDayName = dayNames[istDay] || "Today";
+  const isRunning = sched.openDays.includes(istDay);
+
+  return {
+    isRunningToday: isRunning,
+    reason: isRunning ? undefined : `Closed on ${currentDayName} (${sched.label})`,
+    scheduleLabel: sched.label,
+    currentDayName,
+  };
+}
+
+export function isOpenPast(m: { name?: string; open_time: string; close_time: string; open_panna?: string | null }) {
+  if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return true;
   // If today's open session has not arrived yet, open session cannot be past
   if (!canMarketDeclareOpen(m)) return false;
   if (m.open_panna) return true;
@@ -65,7 +150,8 @@ export function isOpenPast(m: { open_time: string; close_time: string; open_pann
   return closeM > openM ? nowM >= openM : (nowM >= openM || nowM < closeM);
 }
 
-export function isClosePast(m: { open_time: string; close_time: string; close_panna?: string | null }) {
+export function isClosePast(m: { name?: string; open_time: string; close_time: string; close_panna?: string | null }) {
+  if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return true;
   // If today's open session has not arrived yet, close session cannot be past
   if (!canMarketDeclareOpen(m)) return false;
   if (m.close_panna) return true;
@@ -81,8 +167,23 @@ export function isClosePast(m: { open_time: string; close_time: string; close_pa
 }
 
 export type MarketState = "open" | "closed";
-export function marketStatus(m: { active: boolean; open_time: string; close_time: string; open_panna?: string | null; close_panna?: string | null }) {
+export function marketStatus(m: {
+  active: boolean;
+  name?: string;
+  open_time: string;
+  close_time: string;
+  open_panna?: string | null;
+  close_panna?: string | null;
+}) {
   if (!m.active) return { state: "closed" as MarketState, note: "Closed (Off)" };
+
+  // 1. Weekly Schedule Guard (e.g. Kalyan closed on Sunday)
+  if (m.name) {
+    const sched = isMarketScheduledToday(m.name);
+    if (!sched.isRunningToday) {
+      return { state: "closed" as MarketState, note: sched.reason || "Closed Today" };
+    }
+  }
 
   // If today's open session hasn't arrived yet (morning/afternoon before open time):
   // Market is open for players to place today's bets!
@@ -115,12 +216,14 @@ export function marketStatus(m: { active: boolean; open_time: string; close_time
  */
 export function isMarketOpen(m: {
   active: boolean;
+  name?: string;
   open_time: string;
   close_time: string;
   open_panna?: string | null;
   close_panna?: string | null;
 }): boolean {
   if (!m.active) return false;
+  if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return false;
   const canOpen = canMarketDeclareOpen(m);
   const displayClose = canOpen ? m.close_panna : null;
   if (displayClose) return false;
@@ -134,12 +237,14 @@ export function isMarketOpen(m: {
  */
 export function isMarketOpenForAdmin(m: {
   active: boolean;
+  name?: string;
   open_time: string;
   close_time: string;
   open_panna?: string | null;
   close_panna?: string | null;
 }): boolean {
   if (!m.active) return false;
+  if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return false;
   const canOpen = canMarketDeclareOpen(m);
   // If open time arrived today and close_panna is declared, it is Full Day Declared (closed)
   if (canOpen && m.close_panna) return false;
@@ -159,6 +264,7 @@ export function isMarketOpenForAdmin(m: {
  */
 export function sortMarketsForPlayer<T extends {
   active: boolean;
+  name?: string;
   open_time: string;
   close_time: string;
   open_panna?: string | null;
@@ -181,6 +287,7 @@ export function sortMarketsForPlayer<T extends {
  */
 export function sortMarketsForAdmin<T extends {
   active: boolean;
+  name?: string;
   open_time: string;
   close_time: string;
   open_panna?: string | null;
@@ -198,7 +305,8 @@ export function sortMarketsForAdmin<T extends {
 }
 
 // Check whether market's open session time has actually arrived today in IST
-export function canMarketDeclareOpen(m: { open_time: string; close_time: string }) {
+export function canMarketDeclareOpen(m: { open_time: string; close_time: string; name?: string }) {
+  if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return false;
   const nowM = toMin(istHHMM());
   const oM = toMin(m.open_time);
   const cM = toMin(m.close_time);
@@ -211,7 +319,8 @@ export function canMarketDeclareOpen(m: { open_time: string; close_time: string 
 }
 
 // Check whether market's close session time has actually arrived today in IST
-export function canMarketDeclareClose(m: { open_time: string; close_time: string; open_panna?: string | null }) {
+export function canMarketDeclareClose(m: { open_time: string; close_time: string; open_panna?: string | null; name?: string }) {
+  if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return false;
   if (!m.open_panna) return false; // Open result must be declared before close
   const nowM = toMin(istHHMM());
   const oM = toMin(m.open_time);
