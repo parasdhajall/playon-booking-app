@@ -89,6 +89,88 @@ export function generateEscPosBytes(data: ReceiptData): Uint8Array {
   return result;
 }
 
+export type AgentHisabPrintData = {
+  agentName: string;
+  phone?: string;
+  marketName: string;
+  dateStr: string;
+  playCount: number;
+  totalSale: number;
+  commissionRate: number;
+  totalCommission: number;
+  totalWinning: number;
+  totalAmount: number;
+};
+
+// 58mm ESC/POS byte generator for Agent Hisab Parchi
+export function generateAgentHisabEscPosBytes(data: AgentHisabPrintData): Uint8Array {
+  const encoder = new TextEncoder();
+  const parts: Uint8Array[] = [];
+
+  const add = (str: string) => parts.push(encoder.encode(str));
+  const addBytes = (bytes: number[]) => parts.push(new Uint8Array(bytes));
+
+  // 1. Initialize printer (ESC @)
+  addBytes([0x1b, 0x40]);
+
+  // 2. Center Align Header
+  addBytes([0x1b, 0x61, 0x01]); // ESC a 1 (center)
+  addBytes([0x1b, 0x45, 0x01]); // ESC E 1 (bold on)
+  addBytes([0x1d, 0x21, 0x11]); // GS ! 11 (double width & height)
+  add("PLAY ON\n");
+  addBytes([0x1d, 0x21, 0x00]); // GS ! 00 (normal font)
+  addBytes([0x1b, 0x45, 0x00]); // bold off
+  add("AGENT HISAB PARCHI\n");
+  add(`Date: ${data.dateStr}\n`);
+  add("================================\n");
+
+  // 3. Left Align Info
+  addBytes([0x1b, 0x61, 0x00]); // left
+  add(`Agent:  ${data.agentName}\n`);
+  if (data.phone) {
+    add(`Mobile: ${data.phone}\n`);
+  }
+  addBytes([0x1b, 0x45, 0x01]); // bold on
+  add(`Bazar:  ${data.marketName.toUpperCase()}\n`);
+  addBytes([0x1b, 0x45, 0x00]); // bold off
+  add(`Plays:  ${data.playCount} Plays\n`);
+  add("--------------------------------\n");
+
+  // 4. Breakdown Table (32 cols standard 58mm)
+  const padRow = (label: string, val: string) => {
+    return `${label.padEnd(16, " ")}${val.padStart(16, " ")}\n`;
+  };
+
+  add(padRow("Total Sale:", `Rs.${data.totalSale.toLocaleString("en-IN")}`));
+  add(padRow(`Comm (${data.commissionRate}%):`, `Rs.${data.totalCommission.toLocaleString("en-IN")}`));
+  add(padRow("Winning Amount:", `Rs.${data.totalWinning.toLocaleString("en-IN")}`));
+  add("--------------------------------\n");
+
+  // 5. Total Amount (Double Height, Bold, Center)
+  addBytes([0x1b, 0x61, 0x01]); // center
+  addBytes([0x1b, 0x45, 0x01]); // bold on
+  addBytes([0x1d, 0x21, 0x01]); // double height
+  add(`TOTAL: Rs.${data.totalAmount.toLocaleString("en-IN")}\n`);
+  addBytes([0x1d, 0x21, 0x00]); // normal
+  addBytes([0x1b, 0x45, 0x00]); // bold off
+  add("================================\n");
+
+  // 6. Footer Center
+  add("Thank You for Playing with PlayOn\n\n\n\n");
+
+  // Partial paper cut
+  addBytes([0x1d, 0x56, 0x01]);
+
+  const totalLength = parts.reduce((acc, p) => acc + p.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const part of parts) {
+    result.set(part, offset);
+    offset += part.length;
+  }
+  return result;
+}
+
 export function isAndroidNativeApp(): boolean {
   return typeof window !== "undefined" && typeof (window as any).AndroidBridge !== "undefined";
 }
@@ -470,6 +552,56 @@ class BluetoothPrinterManager {
 
     return await this.sendBytes(bytes);
   }
+
+  // Print Agent Hisab automatically
+  public async printAgentHisab(data: AgentHisabPrintData): Promise<{ success: boolean; message: string }> {
+    const bytes = generateAgentHisabEscPosBytes(data);
+
+    // 1. Android Native App Bridge
+    if (isAndroidNativeApp()) {
+      const bridge = (window as any).AndroidBridge;
+      if (!bridge.isBluetoothEnabled()) {
+        return {
+          success: false,
+          message: "Bluetooth OFF hai. Kripya phone ka Bluetooth ON karein.",
+        };
+      }
+      if (!bridge.hasPermissions()) {
+        bridge.requestPermissions();
+        return {
+          success: false,
+          message: "Bluetooth permission allow karein aur dubara print karein.",
+        };
+      }
+
+      const base64 = uint8ArrayToBase64(bytes);
+      const resRaw = bridge.print(this.deviceAddress || "", base64);
+      try {
+        const res = JSON.parse(resRaw);
+        if (res.success) {
+          this.status = "connected";
+          if (res.deviceName) this.deviceName = res.deviceName;
+          if (res.deviceAddress) this.deviceAddress = res.deviceAddress;
+          this.notify();
+        }
+        return res;
+      } catch (e: any) {
+        return { success: false, message: "Print response parse error: " + (e.message || "") };
+      }
+    }
+
+    // 2. Web Bluetooth flow
+    if (this.isConnected()) {
+      return await this.sendBytes(bytes);
+    }
+
+    const connRes = await this.connect();
+    if (!connRes.success) {
+      return connRes;
+    }
+
+    return await this.sendBytes(bytes);
+  }
 }
 
 export const printerManager = new BluetoothPrinterManager();
@@ -495,6 +627,7 @@ export function usePrinter() {
     connect: () => printerManager.connect(),
     disconnect: () => printerManager.disconnect(),
     print: (data: ReceiptData) => printerManager.print(data),
+    printAgentHisab: (data: AgentHisabPrintData) => printerManager.printAgentHisab(data),
   };
 }
 

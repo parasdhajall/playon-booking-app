@@ -33,6 +33,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { fmtIST, gameLabel } from "@/lib/matka";
+import { PrinterStatusBadge } from "./PrinterStatusBadge";
+import { printerManager, usePrinter, printViaSystem, type AgentHisabPrintData } from "@/lib/thermalPrinter";
 
 type Market = { id: string; name: string };
 
@@ -545,8 +547,40 @@ _PlayOn Official Matka Management System_`;
     setTimeout(() => setCopiedSlip(false), 2500);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const [isPrintingThermal, setIsPrintingThermal] = useState(false);
+
+  const handleThermalPrint = async () => {
+    if (!selectedAgentSlip || !activeSlipData) return;
+    setIsPrintingThermal(true);
+    toast.info("Sending parchi to thermal printer...");
+
+    const data: AgentHisabPrintData = {
+      agentName: selectedAgentSlip.name,
+      phone: selectedAgentSlip.phone,
+      marketName: activeSlipData.marketName,
+      dateStr: dateLabel,
+      playCount: activeSlipData.playCount,
+      totalSale: activeSlipData.totalSale,
+      commissionRate: activeSlipData.commissionRate,
+      totalCommission: activeSlipData.totalCommission,
+      totalWinning: activeSlipData.totalWinning,
+      totalAmount: activeSlipData.totalPayableToAgent,
+    };
+
+    const res = await printerManager.printAgentHisab(data);
+    setIsPrintingThermal(false);
+
+    if (res.success) {
+      toast.success(res.message);
+    } else {
+      toast.error(res.message);
+      toast("Tip: Bluetooth printer connect nahi hai toh 'System Print' se 58mm slip print karein.", {
+        action: {
+          label: "System Print",
+          onClick: () => printViaSystem(),
+        },
+      });
+    }
   };
 
   // Open slip for specific market
@@ -1011,6 +1045,8 @@ _PlayOn Official Matka Management System_`;
                     </p>
                   </div>
                 </div>
+
+                <PrinterStatusBadge showTextOnMobile={true} />
               </div>
             </DialogHeader>
 
@@ -1116,7 +1152,7 @@ _PlayOn Official Matka Management System_`;
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center gap-2 pt-2 border-t">
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
               <Button
                 variant="outline"
                 size="sm"
@@ -1139,11 +1175,22 @@ _PlayOn Official Matka Management System_`;
 
               <Button
                 size="sm"
-                className="flex-1 text-xs gap-1.5 cursor-pointer bg-primary text-primary-foreground font-bold shadow"
-                onClick={handlePrint}
+                disabled={isPrintingThermal}
+                className="flex-1 text-xs gap-1.5 cursor-pointer bg-primary text-primary-foreground font-bold shadow hover:bg-primary/90"
+                onClick={handleThermalPrint}
               >
                 <Printer className="h-3.5 w-3.5" />
-                Print Slip
+                {isPrintingThermal ? "Printing…" : "Thermal Print"}
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1 cursor-pointer text-muted-foreground hover:text-foreground"
+                onClick={() => printViaSystem()}
+                title="Print via Android System / Browser Print Service"
+              >
+                System Print
               </Button>
             </div>
           </DialogContent>

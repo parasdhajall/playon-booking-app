@@ -84,10 +84,10 @@
   body * {
     visibility: hidden;
   }
-  #thermal-receipt, #thermal-receipt * {
+  #thermal-receipt, #thermal-receipt *, #printable-agent-slip, #printable-agent-slip * {
     visibility: visible;
   }
-  #thermal-receipt {
+  #thermal-receipt, #printable-agent-slip {
     display: block !important;
     position: absolute;
     left: 0;
