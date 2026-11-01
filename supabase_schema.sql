@@ -475,3 +475,23 @@ create trigger on_auth_user_auto_confirm
 before insert on auth.users
 for each row execute function public.auto_confirm_user();
 
+-- 15. ADMIN USER MANAGEMENT & DELETE USER STORED FUNCTION
+create or replace function public.admin_delete_user(_user_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.has_role(auth.uid(),'admin') then raise exception 'Forbidden: Admin access required'; end if;
+  if _user_id = auth.uid() then raise exception 'Cannot delete your own admin account'; end if;
+
+  -- Delete player bets
+  delete from public.bets where user_id = _user_id;
+  -- Delete player roles
+  delete from public.user_roles where user_id = _user_id;
+  -- Delete player profile
+  delete from public.profiles where id = _user_id;
+  -- Delete from auth.users
+  delete from auth.users where id = _user_id;
+end $$;
+
+grant execute on function public.admin_delete_user(uuid) to authenticated;
+
+

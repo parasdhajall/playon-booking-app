@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   UserPlus,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -458,6 +459,53 @@ function Admin() {
     }
     toast.success(willBlock ? `Account for ${u.email} is now BLOCKED!` : `Account for ${u.email} is now UNBLOCKED!`);
     refresh();
+  };
+
+  const handleDeleteUser = async (u: AdminUser) => {
+    if (u.id === user?.id) {
+      toast.error("You cannot delete your own master admin account!");
+      return;
+    }
+    const displayName =
+      u.display_name && u.display_name.trim().length > 0
+        ? u.display_name
+        : u.email.replace("@playon.app", "");
+
+    if (
+      !confirm(
+        `Are you sure you want to permanently delete player "${displayName}" (${u.email})?\n\nThis will permanently remove their account, profile and betting records.`
+      )
+    ) {
+      return;
+    }
+
+    const toastId = toast.loading(`Deleting ${displayName}…`);
+
+    try {
+      // 1. Try deleting via RPC (which has security definer rights on auth.users and profiles)
+      const { error: rpcErr } = await supabase.rpc("admin_delete_user" as any, {
+        _user_id: u.id,
+      });
+
+      if (rpcErr) {
+        console.warn("RPC admin_delete_user not present, attempting direct cascade delete:", rpcErr);
+        // 2. Fallback: delete bets and profiles
+        await supabase.from("bets").delete().eq("user_id", u.id);
+        const { error: profErr } = await supabase.from("profiles").delete().eq("id", u.id);
+        if (profErr) {
+          toast.dismiss(toastId);
+          toast.error(`Delete failed: ${profErr.message}`);
+          return;
+        }
+      }
+
+      toast.dismiss(toastId);
+      toast.success(`Player "${displayName}" deleted successfully.`);
+      refresh();
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(`Failed to delete user: ${err?.message || "Unknown error"}`);
+    }
   };
 
   const handleCreatePlayer = async (e: React.FormEvent) => {
@@ -1585,18 +1633,30 @@ function Admin() {
                       }`}
                     >
                       <td className="p-3">
-                        <div className="font-bold text-base text-foreground flex items-center gap-2">
-                          <Users className="h-4 w-4 text-primary shrink-0" />
-                          <span className="font-display tracking-wide">{displayName}</span>
-                          {isSelfAdmin && (
-                            <span className="rounded-full bg-gold/25 border border-gold/50 px-2 py-0.5 text-[10px] font-extrabold text-gold tracking-wider">
-                              👑 MASTER ADMIN (YOU)
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs font-mono text-muted-foreground pl-6 flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] uppercase font-semibold text-muted-foreground/70">Mob:</span>
-                          <span className="text-foreground/90 font-medium">{rawPhone}</span>
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0">
+                            <Users className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm text-foreground tracking-tight">
+                                {displayName}
+                              </span>
+                              {isSelfAdmin && (
+                                <span className="rounded-full bg-gold/20 border border-gold/40 px-2 py-0.5 text-[10px] font-bold text-gold tracking-wider shrink-0">
+                                  👑 MASTER ADMIN (YOU)
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] font-mono text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <span className="font-medium text-muted-foreground/70">
+                                {p.email.includes("@playon.app") ? "Mob:" : "Email:"}
+                              </span>
+                              <span className="text-foreground/80 font-medium">
+                                {rawPhone}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </td>
 
@@ -1682,12 +1742,25 @@ function Admin() {
                         <Button
                           size="sm"
                           variant={p.is_blocked ? "default" : "destructive"}
-                          className="h-8 px-2.5 text-[11px] gap-1"
+                          className="h-8 px-2.5 text-[11px] gap-1 cursor-pointer"
                           onClick={() => handleToggleBlock(p)}
                         >
                           <Ban className="h-3 w-3" />
                           {p.is_blocked ? "Unblock" : "Block"}
                         </Button>
+
+                        {/* Delete User Button (Hidden for self master admin) */}
+                        {!isSelfAdmin && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2.5 text-[11px] gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground border-destructive/30 hover:border-destructive transition-colors cursor-pointer"
+                            onClick={() => handleDeleteUser(p)}
+                            title="Permanently delete user"
+                          >
+                            <Trash2 className="h-3 w-3" /> Delete
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
