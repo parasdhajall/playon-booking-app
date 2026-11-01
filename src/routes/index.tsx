@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Clock, Play, Zap, Smartphone, History, Calendar, Lock } from "lucide-react";
+import { Clock, Play, History, Calendar, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtTime, resultLabel, marketStatus, canMarketDeclareOpen, isMarketOpen, isMarketScheduledToday } from "@/lib/matka";
@@ -43,11 +43,6 @@ function Index() {
   const closedMarkets = useMemo(
     () => (markets ? markets.filter((m) => !isMarketOpen(m)).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) : []),
     [markets]
-  );
-
-  const isApp = typeof navigator !== "undefined" && (
-    navigator.userAgent.includes("PlayOnApp") ||
-    (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
   );
 
   const renderMarketCard = (m: any) => {
@@ -132,34 +127,6 @@ function Index() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      {/* Banner / Header */}
-      <section className="mb-6 rounded-2xl border border-primary/20 bg-gradient-to-r from-card via-card/90 to-card p-6 shadow-glow">
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              <Zap className="h-3.5 w-3.5 fill-primary" /> Live Matka Play
-            </span>
-            <h1 className="mt-2 font-display text-4xl tracking-wide text-gold sm:text-5xl md:text-6xl">
-              Online Matka Markets
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-              Select a market and play your favorite game.
-            </p>
-            {!isApp && (
-              <div className="mt-3.5">
-                <a
-                  href="/PlayOn.apk"
-                  download="PlayOn.apk"
-                  className="inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary px-4 py-2 text-xs sm:text-sm font-bold text-primary-foreground shadow-md hover:bg-primary/90 transition-all"
-                >
-                  <Smartphone className="h-4 w-4" /> Download Android App (.apk)
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
       {/* User Today's Expense Only */}
       {user && (
         <section className="mb-6 rounded-xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
