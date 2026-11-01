@@ -1520,15 +1520,22 @@ function Admin() {
                 </tr>
               </thead>
               <tbody>
-                {filteredPlayers.map((p) => (
-                  <tr key={p.id} className={`border-t hover:bg-muted/30 ${p.is_blocked ? "bg-destructive/10" : ""}`}>
-                    <td className="p-3">
-                      <div className="font-semibold text-foreground flex items-center gap-2">
-                        <Users className="h-3.5 w-3.5 text-primary" />
-                        <span>{p.email.replace("@playon.app", "")}</span>
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">Name: {p.display_name}</div>
-                    </td>
+                {filteredPlayers.map((p) => {
+                  const rawPhone = p.email.replace("@playon.app", "");
+                  const displayName = p.display_name && p.display_name.trim().length > 0 ? p.display_name : rawPhone;
+
+                  return (
+                    <tr key={p.id} className={`border-t hover:bg-muted/30 ${p.is_blocked ? "bg-destructive/10" : ""}`}>
+                      <td className="p-3">
+                        <div className="font-bold text-base text-foreground flex items-center gap-2">
+                          <Users className="h-4 w-4 text-primary shrink-0" />
+                          <span className="font-display tracking-wide">{displayName}</span>
+                        </div>
+                        <div className="text-xs font-mono text-muted-foreground pl-6 flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] uppercase font-semibold text-muted-foreground/70">Mob:</span>
+                          <span className="text-foreground/90 font-medium">{rawPhone}</span>
+                        </div>
+                      </td>
 
                     <td>
                       {p.is_blocked ? (
@@ -1621,7 +1628,8 @@ function Admin() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
                 {filteredPlayers.length === 0 && (
                   <tr>
                     <td colSpan={selectedDateForPlayers ? 8 : 7} className="p-8 text-center text-muted-foreground">
