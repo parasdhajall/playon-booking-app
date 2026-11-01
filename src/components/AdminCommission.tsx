@@ -20,7 +20,7 @@ import {
   TrendingUp,
   Sparkles,
   FileText,
-  Wallet,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,17 @@ type AgentBet = {
   player: string;
 };
 
+type AgentMarketBreakdown = {
+  marketId: string;
+  marketName: string;
+  totalSale: number;
+  playCount: number;
+  totalCommission: number;
+  totalWinning: number;
+  totalPayableToAgent: number;
+  bets: AgentBet[];
+};
+
 type AgentSummary = {
   id: string;
   name: string;
@@ -59,12 +70,13 @@ type AgentSummary = {
   commissionRate: number;
   totalSale: number;
   playCount: number;
-  totalCommission: number; // Commission (10%)
-  totalWinning: number;    // Customer Winnings
-  totalPayableToAgent: number; // Commission + Winning (WHAT ADMIN GIVES TO AGENT)
+  totalCommission: number;
+  totalWinning: number;
+  totalPayableToAgent: number; // Commission + Winning
   houseNetProfit: number;      // Total Sale - (Commission + Winning)
   isSettled: boolean;
   bets: AgentBet[];
+  marketBreakdowns: AgentMarketBreakdown[];
 };
 
 export function AdminCommission({ markets }: { markets: Market[] }) {
@@ -110,6 +122,7 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
 
   // Modals state
   const [selectedAgentSlip, setSelectedAgentSlip] = useState<AgentSummary | null>(null);
+  const [selectedSlipMarketId, setSelectedSlipMarketId] = useState<string>("all");
   const [selectedAgentBets, setSelectedAgentBets] = useState<AgentSummary | null>(null);
   const [editingRateAgentId, setEditingRateAgentId] = useState<string | null>(null);
   const [tempRateInput, setTempRateInput] = useState<string>("10");
@@ -181,7 +194,7 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
 
   const marketName = (id: string) => markets.find((m) => m.id === id)?.name ?? "—";
 
-  // Filter bets by market if selected
+  // Filter bets by market if selected in top bar
   const filteredBets = useMemo(() => {
     if (marketFilter === "all") return bets;
     return bets.filter((b) => b.market_id === marketFilter);
@@ -203,7 +216,7 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
     return map;
   }, [users]);
 
-  // Aggregate Agent Summaries
+  // Aggregate Agent Summaries with Market-wise breakdown
   const agentSummaries: AgentSummary[] = useMemo(() => {
     const summaryMap = new Map<string, AgentSummary>();
 
@@ -229,6 +242,7 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
           houseNetProfit: 0,
           isSettled,
           bets: [],
+          marketBreakdowns: [],
         });
       }
     }
@@ -263,6 +277,7 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
           houseNetProfit: 0,
           isSettled,
           bets: [],
+          marketBreakdowns: [],
         };
         summaryMap.set(b.user_id, item);
       }
@@ -275,18 +290,66 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
       item.bets.push({ ...b, player: name });
     }
 
-    // Final calculations for each agent
-    // RULE: Admin gives the Agent: Commission + Customer Winnings
+    // Calculate per-market breakdown for each agent
     const list = [...summaryMap.values()].map((a) => {
       const commAmount = Math.round((a.totalSale * a.commissionRate) / 100);
-      const payableToAgent = commAmount + a.totalWinning; // WHAT WE GIVE TO AGENT
-      const houseProfit = a.totalSale - payableToAgent;   // ADMIN'S REMAINING NET PROFIT
+      const payableToAgent = commAmount + a.totalWinning;
+      const houseProfit = a.totalSale - payableToAgent;
+
+      // Group bets by market
+      const mBreakdownMap = new Map<string, {
+        marketId: string;
+        marketName: string;
+        totalSale: number;
+        playCount: number;
+        totalWinning: number;
+        bets: AgentBet[];
+      }>();
+
+      for (const b of a.bets) {
+        let mItem = mBreakdownMap.get(b.market_id);
+        if (!mItem) {
+          mItem = {
+            marketId: b.market_id,
+            marketName: marketName(b.market_id),
+            totalSale: 0,
+            playCount: 0,
+            totalWinning: 0,
+            bets: [],
+          };
+          mBreakdownMap.set(b.market_id, mItem);
+        }
+        mItem.totalSale += b.points;
+        mItem.playCount += 1;
+        if (b.status === "won") {
+          mItem.totalWinning += b.payout || 0;
+        }
+        mItem.bets.push(b);
+      }
+
+      const marketBreakdowns: AgentMarketBreakdown[] = [...mBreakdownMap.values()]
+        .map((m) => {
+          const mComm = Math.round((m.totalSale * a.commissionRate) / 100);
+          const mPayable = mComm + m.totalWinning;
+          return {
+            marketId: m.marketId,
+            marketName: m.marketName,
+            totalSale: m.totalSale,
+            playCount: m.playCount,
+            totalCommission: mComm,
+            totalWinning: m.totalWinning,
+            totalPayableToAgent: mPayable,
+            bets: m.bets,
+          };
+        })
+        .sort((x, y) => y.totalSale - x.totalSale);
 
       return {
         ...a,
         totalCommission: commAmount,
         totalPayableToAgent: payableToAgent,
         houseNetProfit: houseProfit,
+        marketBreakdowns,
       };
     });
 
@@ -325,7 +388,6 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
       }
     }
 
-    // WHAT WE GIVE TO ALL AGENTS = Commission + Winnings
     const totalPayableToAgents = totalCommission + totalWinnings;
     const totalHouseProfit = grossSale - totalPayableToAgents;
 
@@ -339,6 +401,46 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
       activeAgentsCount,
     };
   }, [agentSummaries]);
+
+  // Active slip data for the selected agent and specific market (or combined)
+  const activeSlipData = useMemo(() => {
+    if (!selectedAgentSlip) return null;
+
+    if (selectedSlipMarketId === "all") {
+      return {
+        marketName: "All Markets Combined",
+        totalSale: selectedAgentSlip.totalSale,
+        playCount: selectedAgentSlip.playCount,
+        commissionRate: selectedAgentSlip.commissionRate,
+        totalCommission: selectedAgentSlip.totalCommission,
+        totalWinning: selectedAgentSlip.totalWinning,
+        totalPayableToAgent: selectedAgentSlip.totalPayableToAgent,
+      };
+    }
+
+    const found = selectedAgentSlip.marketBreakdowns.find((m) => m.marketId === selectedSlipMarketId);
+    if (found) {
+      return {
+        marketName: found.marketName,
+        totalSale: found.totalSale,
+        playCount: found.playCount,
+        commissionRate: selectedAgentSlip.commissionRate,
+        totalCommission: found.totalCommission,
+        totalWinning: found.totalWinning,
+        totalPayableToAgent: found.totalPayableToAgent,
+      };
+    }
+
+    return {
+      marketName: "All Markets Combined",
+      totalSale: selectedAgentSlip.totalSale,
+      playCount: selectedAgentSlip.playCount,
+      commissionRate: selectedAgentSlip.commissionRate,
+      totalCommission: selectedAgentSlip.totalCommission,
+      totalWinning: selectedAgentSlip.totalWinning,
+      totalPayableToAgent: selectedAgentSlip.totalPayableToAgent,
+    };
+  }, [selectedAgentSlip, selectedSlipMarketId]);
 
   // Save custom commission rate
   const handleSaveRate = (agentId: string, rate: number) => {
@@ -383,30 +485,50 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
     qc.invalidateQueries({ queryKey: ["admin-commission-users"] });
   };
 
-  // Generate WhatsApp Message Text: Highlights Commission + Winning to give to agent
-  const generateWhatsAppMessage = (a: AgentSummary) => {
-    return `*📊 PLAYON DAILY AGENT HISAB SLIP*
+  // Generate WhatsApp Message: Clean Parchi without Admin Profit or Wallet Points
+  const generateWhatsAppMessage = (a: AgentSummary, slipData = activeSlipData) => {
+    const d = slipData || {
+      marketName: "All Markets Combined",
+      totalSale: a.totalSale,
+      playCount: a.playCount,
+      commissionRate: a.commissionRate,
+      totalCommission: a.totalCommission,
+      totalWinning: a.totalWinning,
+      totalPayableToAgent: a.totalPayableToAgent,
+    };
+
+    return `*📊 PLAYON AGENT HISAB PARCHI*
 --------------------------------
 👤 *Agent:* ${a.name}
+🏢 *Bazar:* ${d.marketName}
 📅 *Date:* ${dateLabel}
-🏢 *Market:* ${marketFilter === "all" ? "All Markets Combined" : marketName(marketFilter)}
 --------------------------------
-💰 *Total Business (Sale):* ₹${a.totalSale.toLocaleString("en-IN")} (${a.playCount} plays)
---------------------------------
-🎁 *Agent Commission (${a.commissionRate}%):* ₹${a.totalCommission.toLocaleString("en-IN")}
-🏆 *Customer Winning Claim:* ₹${a.totalWinning.toLocaleString("en-IN")}
+💰 *Total Sale:* ₹${d.totalSale.toLocaleString("en-IN")} (${d.playCount} plays)
+🎁 *Commission (${d.commissionRate}%):* ₹${d.totalCommission.toLocaleString("en-IN")}
+🏆 *Winning Amount:* ₹${d.totalWinning.toLocaleString("en-IN")}
 ================================
-💵 *AGENT KO TOTAL DENA HAI:* ₹${a.totalPayableToAgent.toLocaleString("en-IN")}
-👉 *(Commission: ₹${a.totalCommission.toLocaleString("en-IN")} + Winning: ₹${a.totalWinning.toLocaleString("en-IN")})*
-================================
-💼 *Admin Net Bachat (Profit):* ₹${a.houseNetProfit.toLocaleString("en-IN")}
-💼 *Wallet Current Balance:* ₹${a.walletPoints.toLocaleString("en-IN")}
+💵 *Total Amount:* ₹${d.totalPayableToAgent.toLocaleString("en-IN")}
 ================================
 _PlayOn Official Matka Management System_`;
   };
 
-  const handleShareWhatsApp = (a: AgentSummary) => {
-    const text = generateWhatsAppMessage(a);
+  const handleShareWhatsApp = (a: AgentSummary, marketId = "all") => {
+    let slipData = null;
+    if (marketId !== "all") {
+      const found = a.marketBreakdowns.find((m) => m.marketId === marketId);
+      if (found) {
+        slipData = {
+          marketName: found.marketName,
+          totalSale: found.totalSale,
+          playCount: found.playCount,
+          commissionRate: a.commissionRate,
+          totalCommission: found.totalCommission,
+          totalWinning: found.totalWinning,
+          totalPayableToAgent: found.totalPayableToAgent,
+        };
+      }
+    }
+    const text = generateWhatsAppMessage(a, slipData);
     const encoded = encodeURIComponent(text);
     const phone = a.phone ? `91${a.phone}` : "";
     const url = phone
@@ -416,7 +538,7 @@ _PlayOn Official Matka Management System_`;
   };
 
   const handleCopySlip = (a: AgentSummary) => {
-    const text = generateWhatsAppMessage(a);
+    const text = generateWhatsAppMessage(a, activeSlipData);
     navigator.clipboard.writeText(text);
     setCopiedSlip(true);
     toast.success("Hisab slip copied to clipboard!");
@@ -425,6 +547,12 @@ _PlayOn Official Matka Management System_`;
 
   const handlePrint = () => {
     window.print();
+  };
+
+  // Open slip for specific market
+  const handleOpenSlip = (a: AgentSummary, marketId = "all") => {
+    setSelectedAgentSlip(a);
+    setSelectedSlipMarketId(marketId);
   };
 
   return (
@@ -444,7 +572,7 @@ _PlayOn Official Matka Management System_`;
                 </span>
               </h2>
               <p className="text-xs text-muted-foreground">
-                Hame agent ko uska <strong className="text-emerald-400">10% Commission</strong> aur customers ka <strong className="text-rose-400">Winning Amount</strong> dena hota hai.
+                Har bazar ki alag-alag parchi nikaal sakte hain. Parchi par sirf <strong className="text-foreground">Total Sale, Commission, Winning aur Total Amount</strong> hi print hota hai.
               </p>
             </div>
           </div>
@@ -519,7 +647,7 @@ _PlayOn Official Matka Management System_`;
             <div className="flex items-center gap-3">
               <span>Active Agents: <strong className="text-gold font-bold">{grandTotals.activeAgentsCount}</strong></span>
               <span>•</span>
-              <span>Total House Profit: <strong className={grandTotals.totalHouseProfit >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+              <span>House Net Bachat: <strong className={grandTotals.totalHouseProfit >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                 {grandTotals.totalHouseProfit >= 0 ? "+" : ""}₹{grandTotals.totalHouseProfit.toLocaleString("en-IN")}
               </strong></span>
             </div>
@@ -557,7 +685,7 @@ _PlayOn Official Matka Management System_`;
         </div>
       </div>
 
-      {/* 2. Top Metric Cards: Focus on what Admin owes to Agents */}
+      {/* 2. Top Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Gross Sale */}
         <div className="rounded-xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
@@ -576,35 +704,35 @@ _PlayOn Official Matka Management System_`;
         {/* Card 2: Total Commission (10%) */}
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-emerald-400">
-            <span className="text-xs font-bold uppercase tracking-wider">1. Agent Commission (10%)</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Total Commission (10%)</span>
             <Percent className="h-4 w-4" />
           </div>
           <div className="font-mono text-2xl font-black text-emerald-400">
             ₹{grandTotals.totalCommission.toLocaleString("en-IN")}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Agent ka brokerage haq
+            Agent brokerage cut
           </div>
         </div>
 
         {/* Card 3: Total Customer Winnings */}
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-rose-400">
-            <span className="text-xs font-bold uppercase tracking-wider">2. Winning Amount</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Total Winning Claims</span>
             <ArrowDownRight className="h-4 w-4" />
           </div>
           <div className="font-mono text-2xl font-black text-rose-400">
             ₹{grandTotals.totalWinnings.toLocaleString("en-IN")}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Customers ka jeeta hua payout
+            Customer winning payouts
           </div>
         </div>
 
-        {/* Card 4: TOTAL AGENTS KO DENA HAI (COMMISSION + WINNING) */}
+        {/* Card 4: Total Payout (Commission + Winning) */}
         <div className="rounded-xl border-2 border-gold/60 bg-gradient-to-br from-gold/20 via-gold/10 to-card p-4 shadow-md space-y-1">
           <div className="flex items-center justify-between text-gold">
-            <span className="text-xs font-black uppercase tracking-wider">👉 TOTAL AGENTS KO DENA HAI</span>
+            <span className="text-xs font-black uppercase tracking-wider">TOTAL AGENT PAYOUT</span>
             <Coins className="h-5 w-5 text-gold animate-pulse" />
           </div>
           <div className="font-mono text-3xl font-black text-gold">
@@ -647,12 +775,12 @@ _PlayOn Official Matka Management System_`;
           <table className="w-full text-xs">
             <thead className="bg-secondary/80 text-left text-muted-foreground border-b">
               <tr>
-                <th className="p-3">Agent Name & Mobile</th>
+                <th className="p-3">Agent Name & Market Breakdown</th>
                 <th className="text-center p-3">Commission %</th>
                 <th className="text-right p-3">Total Bet (Sale ₹)</th>
                 <th className="text-right p-3 text-emerald-400">Commission (₹)</th>
                 <th className="text-right p-3 text-rose-400">Winning (₹)</th>
-                <th className="text-right p-3 bg-gold/10 text-gold font-bold">Total Agent ko Dena Hai (₹)</th>
+                <th className="text-right p-3 bg-gold/10 text-gold font-bold">Total Amount (₹)</th>
                 <th className="text-right p-3 text-muted-foreground">Admin Profit</th>
                 <th className="text-center p-3">Status</th>
                 <th className="text-center p-3 pr-4">Actions / Share</th>
@@ -669,32 +797,54 @@ _PlayOn Official Matka Management System_`;
                       a.isSettled ? "opacity-75 bg-background/30" : ""
                     }`}
                   >
-                    {/* Agent Name */}
+                    {/* Agent Name + Market Chips */}
                     <td className="p-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm font-bold shrink-0">
+                      <div className="flex items-start gap-2.5">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm font-bold shrink-0 mt-0.5">
                           👤
                         </span>
-                        <div>
-                          <div className="font-bold text-foreground text-sm flex items-center gap-2">
-                            {a.name}
-                            {a.isSettled && (
-                              <span className="rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0.2 font-extrabold">
-                                PAID / SETTLED
-                              </span>
-                            )}
+                        <div className="space-y-1.5">
+                          <div>
+                            <div className="font-bold text-foreground text-sm flex items-center gap-2">
+                              {a.name}
+                              {a.isSettled && (
+                                <span className="rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0.2 font-extrabold">
+                                  PAID
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-2">
+                              <span>Mob: {a.phone || a.email.replace("@playon.app", "")}</span>
+                              <span>•</span>
+                              <span>Wallet: <strong className="text-gold">₹{a.walletPoints.toLocaleString("en-IN")}</strong></span>
+                            </div>
                           </div>
-                          <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-2">
-                            <span>Mob: {a.phone || a.email.replace("@playon.app", "")}</span>
-                            <span>•</span>
-                            <span>Wallet: <strong className="text-gold">₹{a.walletPoints.toLocaleString("en-IN")}</strong></span>
-                          </div>
+
+                          {/* Separate Market Parchi Chips */}
+                          {a.marketBreakdowns.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                              <span className="text-[10px] font-semibold text-muted-foreground">Parchi:</span>
+                              {a.marketBreakdowns.map((mb) => (
+                                <button
+                                  key={mb.marketId}
+                                  type="button"
+                                  onClick={() => handleOpenSlip(a, mb.marketId)}
+                                  className="rounded bg-secondary/80 hover:bg-gold/20 hover:border-gold/50 border border-border px-1.5 py-0.5 text-[10px] font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                                  title={`Open separate parchi for ${mb.marketName}`}
+                                >
+                                  <span>{mb.marketName}:</span>
+                                  <span className="font-mono text-gold font-bold">₹{mb.totalSale.toLocaleString("en-IN")}</span>
+                                  <span className="text-[10px]">🧾</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
 
                     {/* Commission Rate % */}
-                    <td className="p-3 text-center">
+                    <td className="p-3 text-center align-top">
                       {editingRateAgentId === a.id ? (
                         <div className="inline-flex items-center gap-1">
                           <input
@@ -737,7 +887,7 @@ _PlayOn Official Matka Management System_`;
                     </td>
 
                     {/* Gross Sale */}
-                    <td className="p-3 text-right">
+                    <td className="p-3 text-right align-top">
                       <div className="font-mono font-bold text-foreground text-sm">
                         ₹{a.totalSale.toLocaleString("en-IN")}
                       </div>
@@ -747,34 +897,34 @@ _PlayOn Official Matka Management System_`;
                     </td>
 
                     {/* Commission Cut */}
-                    <td className="p-3 text-right font-mono font-bold text-emerald-400">
+                    <td className="p-3 text-right font-mono font-bold text-emerald-400 align-top">
                       ₹{a.totalCommission.toLocaleString("en-IN")}
                     </td>
 
                     {/* Customer Winning */}
-                    <td className="p-3 text-right font-mono font-bold text-rose-400">
+                    <td className="p-3 text-right font-mono font-bold text-rose-400 align-top">
                       ₹{a.totalWinning.toLocaleString("en-IN")}
                     </td>
 
-                    {/* TOTAL AGENT KO DENA HAI (Commission + Winning) */}
-                    <td className="p-3 text-right bg-gold/5">
+                    {/* TOTAL AMOUNT */}
+                    <td className="p-3 text-right bg-gold/5 align-top">
                       <div className="font-mono text-base font-black text-gold">
                         ₹{a.totalPayableToAgent.toLocaleString("en-IN")}
                       </div>
                       <span className="inline-block rounded px-1.5 py-0.2 text-[9px] font-extrabold uppercase tracking-wide bg-gold/20 text-gold border border-gold/40">
-                        Pay to Agent
+                        Total Payout
                       </span>
                     </td>
 
-                    {/* Admin Profit */}
-                    <td className="p-3 text-right">
+                    {/* Admin Profit (Internal house view only) */}
+                    <td className="p-3 text-right align-top">
                       <span className={`font-mono font-semibold ${a.houseNetProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                         {a.houseNetProfit >= 0 ? "+" : ""}₹{a.houseNetProfit.toLocaleString("en-IN")}
                       </span>
                     </td>
 
                     {/* Settled / Pending Toggle */}
-                    <td className="p-3 text-center">
+                    <td className="p-3 text-center align-top">
                       <button
                         type="button"
                         onClick={() => handleToggleSettled(a.id)}
@@ -789,12 +939,12 @@ _PlayOn Official Matka Management System_`;
                     </td>
 
                     {/* Actions */}
-                    <td className="p-3 pr-4 text-center">
+                    <td className="p-3 pr-4 text-center align-top">
                       <div className="flex items-center justify-center gap-1.5">
                         {/* WhatsApp Share Button */}
                         <button
                           type="button"
-                          onClick={() => handleShareWhatsApp(a)}
+                          onClick={() => handleShareWhatsApp(a, "all")}
                           className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 transition-all shadow-sm cursor-pointer"
                           title="Share Hisab on WhatsApp"
                         >
@@ -804,7 +954,7 @@ _PlayOn Official Matka Management System_`;
                         {/* View Parchi / Receipt */}
                         <button
                           type="button"
-                          onClick={() => setSelectedAgentSlip(a)}
+                          onClick={() => handleOpenSlip(a, "all")}
                           className="rounded-lg border bg-secondary hover:bg-secondary/80 text-foreground p-1.5 transition-all cursor-pointer"
                           title="View & Print Hisab Slip"
                         >
@@ -842,8 +992,8 @@ _PlayOn Official Matka Management System_`;
         </div>
       </div>
 
-      {/* 5. MODAL: THERMAL HISAB SLIP PREVIEW & PRINT */}
-      {selectedAgentSlip && (
+      {/* 5. MODAL: MARKET-WISE SEPARATE HISAB SLIP & THERMAL PRINT */}
+      {selectedAgentSlip && activeSlipData && (
         <Dialog open={!!selectedAgentSlip} onOpenChange={() => setSelectedAgentSlip(null)}>
           <DialogContent className="sm:max-w-md p-4 max-h-[92vh] overflow-y-auto bg-card border-border">
             <DialogHeader className="pb-2 border-b">
@@ -854,7 +1004,7 @@ _PlayOn Official Matka Management System_`;
                   </div>
                   <div>
                     <DialogTitle className="text-base font-bold">
-                      Agent Daily Payout Slip
+                      Agent Hisab Parchi
                     </DialogTitle>
                     <p className="text-xs text-muted-foreground">
                       {selectedAgentSlip.name} • {dateLabel}
@@ -864,7 +1014,42 @@ _PlayOn Official Matka Management System_`;
               </div>
             </DialogHeader>
 
-            {/* 58mm Thermal Receipt Visual Container */}
+            {/* Market Switcher Tabs inside Slip Modal */}
+            <div className="space-y-1.5 border-b pb-2.5">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
+                <span>Select Bazar / Market for Parchi:</span>
+                <span className="text-gold font-bold">{activeSlipData.marketName}</span>
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSlipMarketId("all")}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    selectedSlipMarketId === "all"
+                      ? "bg-primary text-primary-foreground shadow"
+                      : "border bg-secondary text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  All Combined
+                </button>
+                {selectedAgentSlip.marketBreakdowns.map((mb) => (
+                  <button
+                    key={mb.marketId}
+                    type="button"
+                    onClick={() => setSelectedSlipMarketId(mb.marketId)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      selectedSlipMarketId === mb.marketId
+                        ? "bg-gold text-slate-950 font-black shadow ring-1 ring-gold"
+                        : "border bg-card text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {mb.marketName} (₹{mb.totalSale.toLocaleString("en-IN")})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 58mm Thermal Receipt Visual Container: NO ADMIN PROFIT, NO WALLET POINTS, CLEAN TOTAL */}
             <div
               id="printable-agent-slip"
               className="my-3 p-4 bg-white text-black font-mono text-xs rounded-xl shadow-inner border border-dashed border-gray-400 select-all space-y-2.5"
@@ -872,7 +1057,7 @@ _PlayOn Official Matka Management System_`;
               {/* Receipt Header */}
               <div className="text-center space-y-0.5 border-b border-dashed border-gray-400 pb-2">
                 <div className="text-lg font-black tracking-wider">PLAY ON</div>
-                <div className="text-[11px] font-bold uppercase text-gray-700">AGENT DAILY PAYOUT PARCHI</div>
+                <div className="text-[11px] font-bold uppercase text-gray-700">AGENT HISAB PARCHI</div>
                 <div className="text-[10px] text-gray-500">Date: {dateLabel}</div>
               </div>
 
@@ -888,55 +1073,45 @@ _PlayOn Official Matka Management System_`;
                     <span>{selectedAgentSlip.phone}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-600">
-                  <span>Bazar:</span>
-                  <span>{marketFilter === "all" ? "All Markets Combined" : marketName(marketFilter)}</span>
+                <div className="flex justify-between font-bold text-gray-800">
+                  <span>Bazar / Market:</span>
+                  <span>{activeSlipData.marketName}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Total Plays:</span>
-                  <span>{selectedAgentSlip.playCount} Plays</span>
+                  <span>{activeSlipData.playCount} Plays</span>
                 </div>
               </div>
 
               {/* Breakdown Ledger Table */}
               <div className="space-y-1.5 text-xs py-1 border-b border-dashed border-gray-400 pb-2">
                 <div className="flex justify-between font-bold text-gray-700">
-                  <span>Total Business (Sale):</span>
-                  <span>₹{selectedAgentSlip.totalSale.toLocaleString("en-IN")}</span>
+                  <span>Total Sale:</span>
+                  <span>₹{activeSlipData.totalSale.toLocaleString("en-IN")}</span>
                 </div>
                 <div className="flex justify-between text-emerald-700 font-bold">
-                  <span>1. Agent Commission ({selectedAgentSlip.commissionRate}%):</span>
-                  <span>₹{selectedAgentSlip.totalCommission.toLocaleString("en-IN")}</span>
+                  <span>Commission ({activeSlipData.commissionRate}%):</span>
+                  <span>₹{activeSlipData.totalCommission.toLocaleString("en-IN")}</span>
                 </div>
                 <div className="flex justify-between text-rose-700 font-bold">
-                  <span>2. Customer Winning Amount:</span>
-                  <span>₹{selectedAgentSlip.totalWinning.toLocaleString("en-IN")}</span>
+                  <span>Winning Amount:</span>
+                  <span>₹{activeSlipData.totalWinning.toLocaleString("en-IN")}</span>
                 </div>
               </div>
 
-              {/* TOTAL AGENT KO DENA HAI (BIG HIGHLIGHT) */}
-              <div className="p-3 bg-amber-50 rounded-lg space-y-1 text-center border-2 border-dashed border-amber-400">
-                <div className="text-[10px] font-black uppercase tracking-wider text-amber-900">
-                  👉 TOTAL AGENT KO DENA HAI
+              {/* CLEAN TOTAL AMOUNT BOX: No "Admin Profit", No "Total Agent ko Dena" phrase */}
+              <div className="p-3 bg-gray-100 rounded-lg space-y-0.5 text-center border border-gray-400">
+                <div className="text-[10px] font-black uppercase tracking-wider text-gray-700">
+                  TOTAL AMOUNT
                 </div>
-                <div className="text-2xl font-black text-amber-950">
-                  ₹{selectedAgentSlip.totalPayableToAgent.toLocaleString("en-IN")}
-                </div>
-                <div className="text-[10px] font-bold text-amber-800">
-                  (Commission ₹{selectedAgentSlip.totalCommission.toLocaleString("en-IN")} + Winning ₹{selectedAgentSlip.totalWinning.toLocaleString("en-IN")})
+                <div className="text-2xl font-black text-gray-900">
+                  ₹{activeSlipData.totalPayableToAgent.toLocaleString("en-IN")}
                 </div>
               </div>
 
-              {/* House Profit Info */}
-              <div className="text-[11px] flex justify-between text-gray-600 border-t border-dashed border-gray-300 pt-1.5">
-                <span>Admin Net Profit (Bachat):</span>
-                <span className="font-bold text-gray-800">₹{selectedAgentSlip.houseNetProfit.toLocaleString("en-IN")}</span>
-              </div>
-
-              {/* Wallet & Footer */}
-              <div className="text-[10px] text-gray-500 pt-1 text-center space-y-0.5">
-                <div>Current Wallet Points: ₹{selectedAgentSlip.walletPoints.toLocaleString("en-IN")}</div>
-                <div>*** Thank You for Playing with PlayOn ***</div>
+              {/* Footer: Clean and simple */}
+              <div className="text-[10px] text-gray-500 pt-1 text-center">
+                *** Thank You for Playing with PlayOn ***
               </div>
             </div>
 
@@ -956,7 +1131,7 @@ _PlayOn Official Matka Management System_`;
                 variant="outline"
                 size="sm"
                 className="flex-1 text-xs gap-1.5 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => handleShareWhatsApp(selectedAgentSlip)}
+                onClick={() => handleShareWhatsApp(selectedAgentSlip, selectedSlipMarketId)}
               >
                 <Share2 className="h-3.5 w-3.5" />
                 WhatsApp
