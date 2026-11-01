@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, Clock, X, ShoppingBag, Trash2, Plus, CheckCircle2, Printer, Layers, Sparkles, Table, Check, Search, Info, Play, AlertCircle, AlertTriangle, Lock } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, X, ShoppingBag, Trash2, Plus, CheckCircle2, Printer, Layers, Sparkles, Table, Check, Search, Info, Play, AlertCircle, AlertTriangle, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -79,8 +79,9 @@ function PlayPage() {
   const [session, setSession] = useState<"open" | "close">("open");
   // Single selection only (no multi-select)
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
-  // Default points starts from 5
-  const [points, setPoints] = useState<number>(5);
+  // Default points starts empty, minimum required is 5
+  const [points, setPoints] = useState<number | "">("");
+  const numPoints = typeof points === "number" ? points : Number(points) || 0;
   const [busy, setBusy] = useState(false);
 
   // Bucket / Order Cart State
@@ -182,7 +183,7 @@ function PlayPage() {
         });
         return next;
       } else {
-        setJodiPoints((pts) => ({ ...pts, [jodi]: pts[jodi] || points || 5 }));
+        setJodiPoints((pts) => ({ ...pts, [jodi]: pts[jodi] || (numPoints >= 5 ? numPoints : 0) }));
         return [...prev, jodi];
       }
     });
@@ -232,7 +233,7 @@ function PlayPage() {
   const totalAnkPoints = activeAnkEntries.reduce((sum, e) => sum + e.points, 0);
 
   const winMultiplier = g.rate;
-  const potentialWin = (points || 0) * winMultiplier;
+  const potentialWin = numPoints * winMultiplier;
 
   // Total amount in the bucket
   const totalBucketAmount = bucket.reduce((sum, item) => sum + item.points, 0);
@@ -310,8 +311,8 @@ function PlayPage() {
         toast.error("Sangam can only be played before Open timing.");
         return false;
       }
-      if (points < 5) {
-        toast.error("Minimum bet is ₹5");
+      if (!numPoints || numPoints < 5) {
+        toast.error("Minimum bet is ₹5. Please enter ₹5 or more.");
         return false;
       }
       const ok = addToBucket([
@@ -320,7 +321,7 @@ function PlayPage() {
           gameLabel: g.label,
           session: "close",
           number: num,
-          points,
+          points: numPoints,
         },
       ]);
       if (ok) {
@@ -345,8 +346,8 @@ function PlayPage() {
       return false;
     }
 
-    if (points < 5) {
-      toast.error("Minimum bet is ₹5");
+    if (!numPoints || numPoints < 5) {
+      toast.error("Minimum bet is ₹5. Please enter ₹5 or more.");
       return false;
     }
 
@@ -356,7 +357,7 @@ function PlayPage() {
         gameLabel: g.label,
         session: effSession,
         number: selectedNumber,
-        points,
+        points: numPoints,
       },
     ]);
     if (ok) {
@@ -385,12 +386,12 @@ function PlayPage() {
       gameLabel: "Jodi",
       session: "close" as const,
       number: j,
-      points: jodiPoints[j] || 5,
+      points: jodiPoints[j] || (numPoints >= 5 ? numPoints : 0),
     }));
 
-    const anyInvalid = bets.some((b) => b.points < 5);
+    const anyInvalid = bets.some((b) => !b.points || b.points < 5);
     if (anyInvalid) {
-      toast.error("Minimum bet per Jodi is ₹5");
+      toast.error("Minimum bet per Jodi is ₹5. Please enter ₹5 or more.");
       return false;
     }
 
@@ -473,7 +474,7 @@ function PlayPage() {
     setSelectedFamilyPannas([]);
   };
 
-  const totalFamilyPoints = selectedFamilyPannas.length * points;
+  const totalFamilyPoints = selectedFamilyPannas.length * numPoints;
 
   const handleAddFamilyToBucket = (): boolean => {
     if (marketClosed) {
@@ -488,8 +489,8 @@ function PlayPage() {
       toast.error("Please enter a 3-digit Panna or select a Family");
       return false;
     }
-    if (points < 5) {
-      toast.error("Minimum bet per Panna is ₹5");
+    if (!numPoints || numPoints < 5) {
+      toast.error("Minimum bet per Panna is ₹5. Please enter ₹5 or more.");
       return false;
     }
 
@@ -500,13 +501,13 @@ function PlayPage() {
         gameLabel: `Family (${info.short})`,
         session: effSession,
         number: p,
-        points: points,
+        points: numPoints,
       };
     });
 
     const ok = addToBucket(bets);
     if (ok) {
-      toast.success(`Added ${bets.length} Family Pannas to Bucket (₹${bets.length * points})`);
+      toast.success(`Added ${bets.length} Family Pannas to Bucket (₹${bets.length * numPoints})`);
     }
     return ok;
   };
@@ -552,7 +553,7 @@ function PlayPage() {
     setSelectedFamilyJodis([]);
   };
 
-  const totalJodiFamilyPoints = selectedFamilyJodis.length * points;
+  const totalJodiFamilyPoints = selectedFamilyJodis.length * numPoints;
 
   const handleAddJodiFamilyToBucket = (): boolean => {
     if (marketClosed) {
@@ -567,8 +568,8 @@ function PlayPage() {
       toast.error("Please enter a 2-digit Jodi or select a Family");
       return false;
     }
-    if (points < 5) {
-      toast.error("Minimum bet per Jodi is ₹5");
+    if (!numPoints || numPoints < 5) {
+      toast.error("Minimum bet per Jodi is ₹5. Please enter ₹5 or more.");
       return false;
     }
 
@@ -577,12 +578,12 @@ function PlayPage() {
       gameLabel: `Family Jodi (${activeJodiFamily.family})`,
       session: "close" as const,
       number: j,
-      points: points,
+      points: numPoints,
     }));
 
     const ok = addToBucket(bets);
     if (ok) {
-      toast.success(`Added ${bets.length} Family Jodis (${activeJodiFamily.family} Family) to Bucket (₹${bets.length * points})`);
+      toast.success(`Added ${bets.length} Family Jodis (${activeJodiFamily.family} Family) to Bucket (₹${bets.length * numPoints})`);
     }
     return ok;
   };
@@ -831,11 +832,16 @@ function PlayPage() {
           </div>
         </div>
 
-        {/* Timing and Date Info */}
-        <div className="mt-2.5 flex items-center justify-between text-[11px] text-muted-foreground border-t pt-2">
+        {/* Timing, Date and Agent Info */}
+        <div className="mt-2.5 flex items-center justify-between text-[11px] text-muted-foreground border-t pt-2 flex-wrap gap-2">
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3 text-primary" /> {fmtTime(m.open_time)} – {fmtTime(m.close_time)}
           </span>
+          {user && (
+            <span className="flex items-center gap-1 font-semibold text-gold" title="Logged in player/agent">
+              <User className="h-3 w-3 text-gold shrink-0" /> {getPlayerDisplayName(user, profile)}
+            </span>
+          )}
           <span className="flex items-center gap-1 font-medium text-foreground">
             <Calendar className="h-3 w-3 text-primary" /> {todaySched.scheduleLabel}
           </span>
@@ -1229,7 +1235,7 @@ function PlayPage() {
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-gold">₹{points}</span>
+                          <span className="text-xs font-bold text-gold">₹{numPoints || 5}</span>
                           <div
                             className={`flex h-5 w-5 items-center justify-center rounded-md border text-[11px] font-bold ${
                               isSelected
@@ -1248,7 +1254,7 @@ function PlayPage() {
                 {/* Summary calculation */}
                 <div className="flex items-center justify-between text-xs pt-1 px-1 text-muted-foreground">
                   <span>
-                    {selectedFamilyPannas.length} Pannas × ₹{points} each
+                    {selectedFamilyPannas.length} Pannas × ₹{numPoints || 5} each
                   </span>
                   <span className="font-bold text-foreground">
                     Family Total: <strong className="text-gold font-mono text-sm">₹{totalFamilyPoints}</strong>
@@ -1620,7 +1626,7 @@ function PlayPage() {
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-gold">₹{points}</span>
+                          <span className="text-xs font-bold text-gold">₹{numPoints || 5}</span>
                           <div
                             className={`flex h-5 w-5 items-center justify-center rounded-md border text-[11px] font-bold ${
                               isSelected
@@ -1639,7 +1645,7 @@ function PlayPage() {
                 {/* Summary calculation */}
                 <div className="flex items-center justify-between text-xs pt-1 px-1 text-muted-foreground">
                   <span>
-                    {selectedFamilyJodis.length} Jodis × ₹{points} each
+                    {selectedFamilyJodis.length} Jodis × ₹{numPoints || 5} each
                   </span>
                   <span className="font-bold text-foreground">
                     Family Total: <strong className="text-gold font-mono text-sm">₹{totalJodiFamilyPoints}</strong>
@@ -1804,8 +1810,17 @@ function PlayPage() {
                       type="number"
                       min={5}
                       step={5}
+                      placeholder="Min ₹5"
                       value={points}
-                      onChange={(e) => setPoints(Math.max(5, Number(e.target.value) || 5))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") {
+                          setPoints("");
+                        } else {
+                          const n = parseInt(val, 10);
+                          setPoints(isNaN(n) ? "" : n);
+                        }
+                      }}
                       className="w-20 text-center font-bold text-sm h-8"
                     />
                   </div>
@@ -1952,8 +1967,17 @@ function PlayPage() {
                       type="number"
                       min={5}
                       step={5}
+                      placeholder="Min ₹5"
                       value={points}
-                      onChange={(e) => setPoints(Math.max(5, Number(e.target.value) || 5))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") {
+                          setPoints("");
+                        } else {
+                          const n = parseInt(val, 10);
+                          setPoints(isNaN(n) ? "" : n);
+                        }
+                      }}
                       className="w-20 text-center font-bold text-sm h-8"
                     />
                   </div>
@@ -2044,8 +2068,17 @@ function PlayPage() {
                       type="number"
                       min={5}
                       step={5}
+                      placeholder="Min ₹5"
                       value={points}
-                      onChange={(e) => setPoints(Math.max(5, Number(e.target.value) || 5))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") {
+                          setPoints("");
+                        } else {
+                          const n = parseInt(val, 10);
+                          setPoints(isNaN(n) ? "" : n);
+                        }
+                      }}
                       className="w-20 text-center font-bold text-sm h-8"
                     />
                   </div>
@@ -2122,8 +2155,10 @@ function PlayPage() {
                   >
                     {bucket.length > 0 ? (
                       `Confirm Bucket (${bucket.length + 1} Plays)`
+                    ) : numPoints >= 5 ? (
+                      `Confirm & Review (₹${numPoints})`
                     ) : (
-                      `Confirm & Review (₹${points})`
+                      `Confirm & Review`
                     )}
                   </Button>
                 </div>

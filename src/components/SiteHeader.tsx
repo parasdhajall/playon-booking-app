@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, Smartphone } from "lucide-react";
+import { LogOut, Smartphone, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProfile, useTodayExpense } from "@/hooks/useAuth";
+import { getPlayerDisplayName } from "@/lib/matka";
 
 export function SiteHeader() {
   const { user } = useAuth();
@@ -11,6 +12,8 @@ export function SiteHeader() {
   const { data: todayExp } = useTodayExpense(user?.id);
   const qc = useQueryClient();
   const navigate = useNavigate();
+
+  const playerName = user ? getPlayerDisplayName(user, profile) : "";
 
   const signOut = async () => {
     await qc.cancelQueries();
@@ -56,6 +59,17 @@ export function SiteHeader() {
 
           {user ? (
             <>
+              {/* Agent / Player Name Pill */}
+              <div
+                className="flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-xs font-semibold shadow-xs"
+                title={`Logged in as ${playerName}`}
+              >
+                <User className="h-3.5 w-3.5 text-gold shrink-0" />
+                <span className="max-w-[75px] sm:max-w-[130px] truncate font-bold text-gold">
+                  {playerName}
+                </span>
+              </div>
+
               <span
                 className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs sm:text-sm font-semibold text-primary"
                 title="Today's Total Bet / Aaj Ka Expense"

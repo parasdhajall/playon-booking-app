@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Printer } from "lucide-react";
+import { Printer, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProfile, useTodayExpense } from "@/hooks/useAuth";
@@ -123,7 +123,17 @@ function History() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-display text-4xl tracking-wide text-gold">My Plays</h1>
+        <div>
+          <h1 className="font-display text-4xl tracking-wide text-gold">My Plays</h1>
+          {user && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+              <span>Agent / Player:</span>
+              <strong className="text-gold font-semibold flex items-center gap-1">
+                <User className="h-3.5 w-3.5" /> {getPlayerDisplayName(user, profile)}
+              </strong>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <PrinterStatusBadge showTextOnMobile={true} />
           <span className="text-xs text-muted-foreground hidden sm:inline">Recent 200 plays</span>
