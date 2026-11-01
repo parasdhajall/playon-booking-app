@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Sparkles,
   FileText,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,9 +59,10 @@ type AgentSummary = {
   commissionRate: number;
   totalSale: number;
   playCount: number;
-  totalCommission: number;
-  totalWinning: number;
-  netHouseSettlement: number; // (totalSale - totalCommission) - totalWinning
+  totalCommission: number; // Commission (10%)
+  totalWinning: number;    // Customer Winnings
+  totalPayableToAgent: number; // Commission + Winning (WHAT ADMIN GIVES TO AGENT)
+  houseNetProfit: number;      // Total Sale - (Commission + Winning)
   isSettled: boolean;
   bets: AgentBet[];
 };
@@ -189,7 +191,6 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
   const userMap = useMemo(() => {
     const map = new Map<string, { id: string; name: string; email: string; phone: string; points: number }>();
     for (const u of users) {
-      // Extract raw phone number if email is phone format (e.g. 9096884094@... or plain 9096884094)
       const rawPhone = u.email ? u.email.replace(/@.*$/, "").replace(/[^0-9]/g, "") : "";
       map.set(u.id, {
         id: u.id,
@@ -206,7 +207,7 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
   const agentSummaries: AgentSummary[] = useMemo(() => {
     const summaryMap = new Map<string, AgentSummary>();
 
-    // Initialize all known users if showZeroBetAgents is true, or just track as needed
+    // Initialize known users if showZeroBetAgents is true
     for (const u of users) {
       if (showZeroBetAgents) {
         const rate = customRates[u.id] ?? 10;
@@ -224,7 +225,8 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
           playCount: 0,
           totalCommission: 0,
           totalWinning: 0,
-          netHouseSettlement: 0,
+          totalPayableToAgent: 0,
+          houseNetProfit: 0,
           isSettled,
           bets: [],
         });
@@ -257,7 +259,8 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
           playCount: 0,
           totalCommission: 0,
           totalWinning: 0,
-          netHouseSettlement: 0,
+          totalPayableToAgent: 0,
+          houseNetProfit: 0,
           isSettled,
           bets: [],
         };
@@ -273,13 +276,17 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
     }
 
     // Final calculations for each agent
+    // RULE: Admin gives the Agent: Commission + Customer Winnings
     const list = [...summaryMap.values()].map((a) => {
       const commAmount = Math.round((a.totalSale * a.commissionRate) / 100);
-      const netSettlement = a.totalSale - commAmount - a.totalWinning;
+      const payableToAgent = commAmount + a.totalWinning; // WHAT WE GIVE TO AGENT
+      const houseProfit = a.totalSale - payableToAgent;   // ADMIN'S REMAINING NET PROFIT
+
       return {
         ...a,
         totalCommission: commAmount,
-        netHouseSettlement: netSettlement,
+        totalPayableToAgent: payableToAgent,
+        houseNetProfit: houseProfit,
       };
     });
 
@@ -318,14 +325,17 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
       }
     }
 
-    const netHouseSettlement = grossSale - totalCommission - totalWinnings;
+    // WHAT WE GIVE TO ALL AGENTS = Commission + Winnings
+    const totalPayableToAgents = totalCommission + totalWinnings;
+    const totalHouseProfit = grossSale - totalPayableToAgents;
 
     return {
       grossSale,
       totalPlays,
       totalCommission,
       totalWinnings,
-      netHouseSettlement,
+      totalPayableToAgents,
+      totalHouseProfit,
       activeAgentsCount,
     };
   }, [agentSummaries]);
@@ -350,7 +360,7 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
     if (typeof window !== "undefined") {
       localStorage.setItem("playon_agent_settled_status", JSON.stringify(updated));
     }
-    toast.success(nextVal ? "Marked as Settled! ✅" : "Marked as Pending! ⏳");
+    toast.success(nextVal ? "Marked as Paid / Settled! ✅" : "Marked as Pending! ⏳");
   };
 
   // Quick Points adjust
@@ -373,14 +383,8 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
     qc.invalidateQueries({ queryKey: ["admin-commission-users"] });
   };
 
-  // Generate WhatsApp Message Text
+  // Generate WhatsApp Message Text: Highlights Commission + Winning to give to agent
   const generateWhatsAppMessage = (a: AgentSummary) => {
-    const isLena = a.netHouseSettlement >= 0;
-    const netFormatted = `₹${Math.abs(a.netHouseSettlement).toLocaleString("en-IN")}`;
-    const statusNote = isLena
-      ? `👉 *HISAAB:* (Agent se ${netFormatted} LENE HAIN)`
-      : `👉 *HISAAB:* (Agent ko ${netFormatted} DENE HAIN - Winning Claim)`;
-
     return `*📊 PLAYON DAILY AGENT HISAB SLIP*
 --------------------------------
 👤 *Agent:* ${a.name}
@@ -388,12 +392,14 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
 🏢 *Market:* ${marketFilter === "all" ? "All Markets Combined" : marketName(marketFilter)}
 --------------------------------
 💰 *Total Business (Sale):* ₹${a.totalSale.toLocaleString("en-IN")} (${a.playCount} plays)
-🎁 *Agent Commission (${a.commissionRate}%):* -₹${a.totalCommission.toLocaleString("en-IN")}
-🏆 *Customer Winning Claim:* -₹${a.totalWinning.toLocaleString("en-IN")}
 --------------------------------
-💵 *NET SETTLEMENT:* ${isLena ? "+" : "-"}${netFormatted}
-${statusNote}
---------------------------------
+🎁 *Agent Commission (${a.commissionRate}%):* ₹${a.totalCommission.toLocaleString("en-IN")}
+🏆 *Customer Winning Claim:* ₹${a.totalWinning.toLocaleString("en-IN")}
+================================
+💵 *AGENT KO TOTAL DENA HAI:* ₹${a.totalPayableToAgent.toLocaleString("en-IN")}
+👉 *(Commission: ₹${a.totalCommission.toLocaleString("en-IN")} + Winning: ₹${a.totalWinning.toLocaleString("en-IN")})*
+================================
+💼 *Admin Net Bachat (Profit):* ₹${a.houseNetProfit.toLocaleString("en-IN")}
 💼 *Wallet Current Balance:* ₹${a.walletPoints.toLocaleString("en-IN")}
 ================================
 _PlayOn Official Matka Management System_`;
@@ -432,13 +438,13 @@ _PlayOn Official Matka Management System_`;
             </span>
             <div>
               <h2 className="font-display text-2xl tracking-wide text-gold flex items-center gap-2">
-                Agent Commission & Daily Khata
+                Agent Commission & Payout Khata
                 <span className="rounded-md bg-gold/20 border border-gold/40 text-gold font-bold text-xs px-2.5 py-0.5">
-                  10% Patti / Cut
+                  10% Brokerage + Winnings
                 </span>
               </h2>
               <p className="text-xs text-muted-foreground">
-                Automatic calculation of agent sales, 10% commission deduction, winning claims, and 1-click WhatsApp hisab slips.
+                Hame agent ko uska <strong className="text-emerald-400">10% Commission</strong> aur customers ka <strong className="text-rose-400">Winning Amount</strong> dena hota hai.
               </p>
             </div>
           </div>
@@ -510,9 +516,13 @@ _PlayOn Official Matka Management System_`;
         <div className="space-y-1.5 border-t border-border/60 pt-3">
           <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground px-0.5">
             <span>Filter by Bazar / Market:</span>
-            <span>
-              Active Agents Today: <strong className="text-gold font-bold">{grandTotals.activeAgentsCount}</strong>
-            </span>
+            <div className="flex items-center gap-3">
+              <span>Active Agents: <strong className="text-gold font-bold">{grandTotals.activeAgentsCount}</strong></span>
+              <span>•</span>
+              <span>Total House Profit: <strong className={grandTotals.totalHouseProfit >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                {grandTotals.totalHouseProfit >= 0 ? "+" : ""}₹{grandTotals.totalHouseProfit.toLocaleString("en-IN")}
+              </strong></span>
+            </div>
           </div>
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
             <button
@@ -547,12 +557,12 @@ _PlayOn Official Matka Management System_`;
         </div>
       </div>
 
-      {/* 2. Top Metric Cards (Financial Summary for Selected Date) */}
+      {/* 2. Top Metric Cards: Focus on what Admin owes to Agents */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Gross Sale */}
         <div className="rounded-xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-bold uppercase tracking-wider">Gross Sale (Total Bet)</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Gross Sale (Turnover)</span>
             <DollarSign className="h-4 w-4 text-gold" />
           </div>
           <div className="font-mono text-2xl font-black text-foreground">
@@ -563,56 +573,45 @@ _PlayOn Official Matka Management System_`;
           </div>
         </div>
 
-        {/* Card 2: Total Commission */}
-        <div className="rounded-xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-bold uppercase tracking-wider">Agent Commission (10%)</span>
-            <Percent className="h-4 w-4 text-emerald-500" />
+        {/* Card 2: Total Commission (10%) */}
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-emerald-400">
+            <span className="text-xs font-bold uppercase tracking-wider">1. Agent Commission (10%)</span>
+            <Percent className="h-4 w-4" />
           </div>
-          <div className="font-mono text-2xl font-black text-emerald-500">
+          <div className="font-mono text-2xl font-black text-emerald-400">
             ₹{grandTotals.totalCommission.toLocaleString("en-IN")}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Agent brokerage / patti cut
+            Agent ka brokerage haq
           </div>
         </div>
 
-        {/* Card 3: Customer Winnings */}
-        <div className="rounded-xl border border-border/80 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-bold uppercase tracking-wider">Winning Claims</span>
-            <ArrowDownRight className="h-4 w-4 text-rose-500" />
+        {/* Card 3: Total Customer Winnings */}
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-rose-400">
+            <span className="text-xs font-bold uppercase tracking-wider">2. Winning Amount</span>
+            <ArrowDownRight className="h-4 w-4" />
           </div>
-          <div className="font-mono text-2xl font-black text-rose-500">
+          <div className="font-mono text-2xl font-black text-rose-400">
             ₹{grandTotals.totalWinnings.toLocaleString("en-IN")}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Customer payouts to be deducted
+            Customers ka jeeta hua payout
           </div>
         </div>
 
-        {/* Card 4: Net House Settlement */}
-        <div
-          className={`rounded-xl border p-4 shadow-sm space-y-1 ${
-            grandTotals.netHouseSettlement >= 0
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-              : "border-rose-500/40 bg-rose-500/10 text-rose-400"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              {grandTotals.netHouseSettlement >= 0 ? "Net House Receivable" : "Net House Payable"}
-            </span>
-            <TrendingUp className="h-4 w-4" />
+        {/* Card 4: TOTAL AGENTS KO DENA HAI (COMMISSION + WINNING) */}
+        <div className="rounded-xl border-2 border-gold/60 bg-gradient-to-br from-gold/20 via-gold/10 to-card p-4 shadow-md space-y-1">
+          <div className="flex items-center justify-between text-gold">
+            <span className="text-xs font-black uppercase tracking-wider">👉 TOTAL AGENTS KO DENA HAI</span>
+            <Coins className="h-5 w-5 text-gold animate-pulse" />
           </div>
-          <div className="font-mono text-2xl font-black">
-            {grandTotals.netHouseSettlement >= 0 ? "+" : "-"}₹
-            {Math.abs(grandTotals.netHouseSettlement).toLocaleString("en-IN")}
+          <div className="font-mono text-3xl font-black text-gold">
+            ₹{grandTotals.totalPayableToAgents.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] font-bold">
-            {grandTotals.netHouseSettlement >= 0
-              ? "👉 Agents se collect karna hai"
-              : "👉 Agents ko winning pay karni hai"}
+          <div className="text-[11px] font-bold text-foreground/90">
+            Commission (₹{grandTotals.totalCommission.toLocaleString("en-IN")}) + Winning (₹{grandTotals.totalWinnings.toLocaleString("en-IN")})
           </div>
         </div>
       </div>
@@ -650,17 +649,17 @@ _PlayOn Official Matka Management System_`;
               <tr>
                 <th className="p-3">Agent Name & Mobile</th>
                 <th className="text-center p-3">Commission %</th>
-                <th className="text-right p-3">Gross Sale (₹)</th>
-                <th className="text-right p-3">Commission (₹)</th>
-                <th className="text-right p-3">Winning (₹)</th>
-                <th className="text-right p-3">Net Settlement</th>
+                <th className="text-right p-3">Total Bet (Sale ₹)</th>
+                <th className="text-right p-3 text-emerald-400">Commission (₹)</th>
+                <th className="text-right p-3 text-rose-400">Winning (₹)</th>
+                <th className="text-right p-3 bg-gold/10 text-gold font-bold">Total Agent ko Dena Hai (₹)</th>
+                <th className="text-right p-3 text-muted-foreground">Admin Profit</th>
                 <th className="text-center p-3">Status</th>
                 <th className="text-center p-3 pr-4">Actions / Share</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {agentSummaries.map((a) => {
-                const isLena = a.netHouseSettlement >= 0;
                 const hasBets = a.totalSale > 0;
 
                 return (
@@ -681,7 +680,7 @@ _PlayOn Official Matka Management System_`;
                             {a.name}
                             {a.isSettled && (
                               <span className="rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0.2 font-extrabold">
-                                SETTLED
+                                PAID / SETTLED
                               </span>
                             )}
                           </div>
@@ -748,32 +747,29 @@ _PlayOn Official Matka Management System_`;
                     </td>
 
                     {/* Commission Cut */}
-                    <td className="p-3 text-right font-mono font-bold text-emerald-500">
+                    <td className="p-3 text-right font-mono font-bold text-emerald-400">
                       ₹{a.totalCommission.toLocaleString("en-IN")}
                     </td>
 
                     {/* Customer Winning */}
-                    <td className="p-3 text-right font-mono font-bold text-rose-500">
+                    <td className="p-3 text-right font-mono font-bold text-rose-400">
                       ₹{a.totalWinning.toLocaleString("en-IN")}
                     </td>
 
-                    {/* Net Settlement (Lena / Dena) */}
-                    <td className="p-3 text-right">
-                      <div
-                        className={`font-mono text-sm font-black ${
-                          isLena ? "text-emerald-400" : "text-rose-400"
-                        }`}
-                      >
-                        {isLena ? "+" : "-"}₹{Math.abs(a.netHouseSettlement).toLocaleString("en-IN")}
+                    {/* TOTAL AGENT KO DENA HAI (Commission + Winning) */}
+                    <td className="p-3 text-right bg-gold/5">
+                      <div className="font-mono text-base font-black text-gold">
+                        ₹{a.totalPayableToAgent.toLocaleString("en-IN")}
                       </div>
-                      <span
-                        className={`inline-block rounded px-1.5 py-0.2 text-[10px] font-extrabold uppercase tracking-wide ${
-                          isLena
-                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                            : "bg-rose-500/15 text-rose-400 border border-rose-500/30"
-                        }`}
-                      >
-                        {isLena ? "Lene Hain" : "Dene Hain"}
+                      <span className="inline-block rounded px-1.5 py-0.2 text-[9px] font-extrabold uppercase tracking-wide bg-gold/20 text-gold border border-gold/40">
+                        Pay to Agent
+                      </span>
+                    </td>
+
+                    {/* Admin Profit */}
+                    <td className="p-3 text-right">
+                      <span className={`font-mono font-semibold ${a.houseNetProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        {a.houseNetProfit >= 0 ? "+" : ""}₹{a.houseNetProfit.toLocaleString("en-IN")}
                       </span>
                     </td>
 
@@ -788,7 +784,7 @@ _PlayOn Official Matka Management System_`;
                             : "bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-gold/50"
                         }`}
                       >
-                        {a.isSettled ? "✓ Settled" : "⏳ Pending"}
+                        {a.isSettled ? "✓ Paid" : "⏳ Pending"}
                       </button>
                     </td>
 
@@ -834,7 +830,7 @@ _PlayOn Official Matka Management System_`;
 
               {agentSummaries.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="p-8 text-center text-muted-foreground">
                     {isBetsLoading
                       ? "Loading agent plays and calculating commissions..."
                       : `No agent plays recorded for ${dateLabel}.`}
@@ -858,7 +854,7 @@ _PlayOn Official Matka Management System_`;
                   </div>
                   <div>
                     <DialogTitle className="text-base font-bold">
-                      Agent Daily Hisab Slip
+                      Agent Daily Payout Slip
                     </DialogTitle>
                     <p className="text-xs text-muted-foreground">
                       {selectedAgentSlip.name} • {dateLabel}
@@ -876,14 +872,14 @@ _PlayOn Official Matka Management System_`;
               {/* Receipt Header */}
               <div className="text-center space-y-0.5 border-b border-dashed border-gray-400 pb-2">
                 <div className="text-lg font-black tracking-wider">PLAY ON</div>
-                <div className="text-[11px] font-bold uppercase text-gray-700">AGENT DAILY HISAB PARCHI</div>
+                <div className="text-[11px] font-bold uppercase text-gray-700">AGENT DAILY PAYOUT PARCHI</div>
                 <div className="text-[10px] text-gray-500">Date: {dateLabel}</div>
               </div>
 
               {/* Agent & Market Info */}
               <div className="space-y-1 text-[11px] border-b border-dashed border-gray-400 pb-2">
                 <div className="flex justify-between font-bold">
-                  <span>Agent:</span>
+                  <span>Agent Name:</span>
                   <span>{selectedAgentSlip.name}</span>
                 </div>
                 {selectedAgentSlip.phone && (
@@ -894,7 +890,7 @@ _PlayOn Official Matka Management System_`;
                 )}
                 <div className="flex justify-between text-gray-600">
                   <span>Bazar:</span>
-                  <span>{marketFilter === "all" ? "All Markets" : marketName(marketFilter)}</span>
+                  <span>{marketFilter === "all" ? "All Markets Combined" : marketName(marketFilter)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Total Plays:</span>
@@ -904,35 +900,37 @@ _PlayOn Official Matka Management System_`;
 
               {/* Breakdown Ledger Table */}
               <div className="space-y-1.5 text-xs py-1 border-b border-dashed border-gray-400 pb-2">
-                <div className="flex justify-between font-bold text-gray-800">
-                  <span>Gross Sale (Total Bet):</span>
+                <div className="flex justify-between font-bold text-gray-700">
+                  <span>Total Business (Sale):</span>
                   <span>₹{selectedAgentSlip.totalSale.toLocaleString("en-IN")}</span>
                 </div>
                 <div className="flex justify-between text-emerald-700 font-bold">
-                  <span>Commission ({selectedAgentSlip.commissionRate}%):</span>
-                  <span>-₹{selectedAgentSlip.totalCommission.toLocaleString("en-IN")}</span>
+                  <span>1. Agent Commission ({selectedAgentSlip.commissionRate}%):</span>
+                  <span>₹{selectedAgentSlip.totalCommission.toLocaleString("en-IN")}</span>
                 </div>
                 <div className="flex justify-between text-rose-700 font-bold">
-                  <span>Customer Winnings:</span>
-                  <span>-₹{selectedAgentSlip.totalWinning.toLocaleString("en-IN")}</span>
+                  <span>2. Customer Winning Amount:</span>
+                  <span>₹{selectedAgentSlip.totalWinning.toLocaleString("en-IN")}</span>
                 </div>
               </div>
 
-              {/* Net Payable / Receivable Result */}
-              <div className="p-2.5 bg-gray-100 rounded-lg space-y-1 text-center border border-gray-300">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
-                  {selectedAgentSlip.netHouseSettlement >= 0
-                    ? "NET AMOUNT RECEIVABLE (LENE HAIN)"
-                    : "NET AMOUNT PAYABLE (DENE HAIN)"}
+              {/* TOTAL AGENT KO DENA HAI (BIG HIGHLIGHT) */}
+              <div className="p-3 bg-amber-50 rounded-lg space-y-1 text-center border-2 border-dashed border-amber-400">
+                <div className="text-[10px] font-black uppercase tracking-wider text-amber-900">
+                  👉 TOTAL AGENT KO DENA HAI
                 </div>
-                <div className="text-xl font-black text-gray-900">
-                  ₹{Math.abs(selectedAgentSlip.netHouseSettlement).toLocaleString("en-IN")}
+                <div className="text-2xl font-black text-amber-950">
+                  ₹{selectedAgentSlip.totalPayableToAgent.toLocaleString("en-IN")}
                 </div>
-                <div className="text-[10px] font-semibold text-gray-600">
-                  {selectedAgentSlip.netHouseSettlement >= 0
-                    ? "(Agent se yeh rashi collect karni hai)"
-                    : "(Agent ko yeh winning rashi deni hai)"}
+                <div className="text-[10px] font-bold text-amber-800">
+                  (Commission ₹{selectedAgentSlip.totalCommission.toLocaleString("en-IN")} + Winning ₹{selectedAgentSlip.totalWinning.toLocaleString("en-IN")})
                 </div>
+              </div>
+
+              {/* House Profit Info */}
+              <div className="text-[11px] flex justify-between text-gray-600 border-t border-dashed border-gray-300 pt-1.5">
+                <span>Admin Net Profit (Bachat):</span>
+                <span className="font-bold text-gray-800">₹{selectedAgentSlip.houseNetProfit.toLocaleString("en-IN")}</span>
               </div>
 
               {/* Wallet & Footer */}
@@ -1059,4 +1057,3 @@ _PlayOn Official Matka Management System_`;
     </section>
   );
 }
-
