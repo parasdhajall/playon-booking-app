@@ -1501,6 +1501,53 @@ function Admin() {
             </div>
           </div>
 
+          {/* Active Admin Identity & Security Card */}
+          <div className="rounded-xl border border-gold/40 bg-gradient-to-r from-gold/15 via-gold/5 to-card p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3.5">
+              <div className="h-11 w-11 rounded-xl bg-gold/20 text-gold flex items-center justify-center font-bold text-2xl border border-gold/40 shadow-inner">
+                👑
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gold">Current Master Admin Account</span>
+                  <span className="rounded-full bg-gold/20 border border-gold/40 px-2 py-0.5 text-[10px] font-extrabold text-gold">LOGGED IN</span>
+                </div>
+                <div className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <span className="text-muted-foreground">Admin Login ID:</span>
+                  <span className="font-mono text-base font-bold text-gold bg-background/80 px-2.5 py-0.5 rounded-md border border-gold/40">
+                    {user?.email?.replace("@playon.app", "") || "Master Admin"}
+                  </span>
+                </div>
+                <div className="text-[11px] text-muted-foreground font-mono">
+                  Database Auth ID: <span className="text-foreground/90">{user?.email}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="bg-gold hover:bg-gold/90 text-black font-bold text-xs gap-1.5 shadow-md h-9 cursor-pointer"
+                onClick={() => {
+                  if (user) {
+                    setPasswordModalUser({
+                      id: user.id,
+                      email: user.email || "",
+                      display_name: profile?.display_name || "Master Admin",
+                      points: profile?.points || 0,
+                      is_blocked: false,
+                      created_at: profile?.created_at || "",
+                      last_sign_in_at: null,
+                    });
+                    setNewPassword("");
+                  }
+                }}
+              >
+                <Key className="h-3.5 w-3.5" /> 🔑 Change Admin Password
+              </Button>
+            </div>
+          </div>
+
           <div className="overflow-x-auto rounded-xl border bg-card">
             <table className="w-full text-xs">
               <thead className="bg-secondary text-left text-muted-foreground">
@@ -1524,12 +1571,28 @@ function Admin() {
                   const rawPhone = p.email.replace("@playon.app", "");
                   const displayName = p.display_name && p.display_name.trim().length > 0 ? p.display_name : rawPhone;
 
+                  const isSelfAdmin = p.id === user?.id;
+
                   return (
-                    <tr key={p.id} className={`border-t hover:bg-muted/30 ${p.is_blocked ? "bg-destructive/10" : ""}`}>
+                    <tr
+                      key={p.id}
+                      className={`border-t hover:bg-muted/30 transition-colors ${
+                        isSelfAdmin
+                          ? "bg-gold/10 border-l-4 border-l-gold"
+                          : p.is_blocked
+                          ? "bg-destructive/10"
+                          : ""
+                      }`}
+                    >
                       <td className="p-3">
                         <div className="font-bold text-base text-foreground flex items-center gap-2">
                           <Users className="h-4 w-4 text-primary shrink-0" />
                           <span className="font-display tracking-wide">{displayName}</span>
+                          {isSelfAdmin && (
+                            <span className="rounded-full bg-gold/25 border border-gold/50 px-2 py-0.5 text-[10px] font-extrabold text-gold tracking-wider">
+                              👑 MASTER ADMIN (YOU)
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs font-mono text-muted-foreground pl-6 flex items-center gap-1.5 mt-0.5">
                           <span className="text-[10px] uppercase font-semibold text-muted-foreground/70">Mob:</span>

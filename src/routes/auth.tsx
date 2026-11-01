@@ -41,7 +41,7 @@ export function AuthPage() {
     e.preventDefault();
     const cleanId = loginId.trim();
     if (!cleanId) {
-      toast.error("Please enter your 10-digit mobile number");
+      toast.error("Please enter your 10-digit mobile number or admin email");
       return;
     }
     if (!password) {
@@ -62,7 +62,7 @@ export function AuthPage() {
         error.message.toLowerCase().includes("invalid login credentials") ||
         error.message.toLowerCase().includes("invalid_grant")
       ) {
-        toast.error("Invalid mobile number or password. Please verify and try again.");
+        toast.error("Invalid login credentials. Please verify your mobile/email and password.");
       } else {
         toast.error(error.message);
       }
@@ -85,29 +85,44 @@ export function AuthPage() {
             Authorized Sign In
           </h1>
           <p className="text-xs text-muted-foreground">
-            Enter your authorized mobile number and password
+            Enter your authorized mobile number or admin email and password
           </p>
         </div>
 
         {/* Sign In Form */}
         <form onSubmit={handleSignIn} className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Mobile Number</Label>
+            <Label className="text-xs font-semibold">Mobile Number or Admin Email</Label>
             <div className="relative flex items-center">
-              <div className="absolute left-3 flex items-center gap-1 text-xs font-bold text-muted-foreground border-r pr-2">
-                <span>+91</span>
-              </div>
-              <Input
-                type="tel"
-                inputMode="numeric"
-                maxLength={10}
-                placeholder="10-digit mobile number"
-                value={loginId}
-                onChange={(e) => setLoginId(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                className="pl-16 h-11 text-sm font-semibold tracking-wider rounded-xl"
-                required
-                autoFocus
-              />
+              {/^\d*$/.test(loginId) && loginId.length <= 10 ? (
+                <>
+                  <div className="absolute left-3 flex items-center gap-1 text-xs font-bold text-muted-foreground border-r pr-2 pointer-events-none">
+                    <span>+91</span>
+                  </div>
+                  <Input
+                    type="text"
+                    placeholder="10-digit mobile number"
+                    value={loginId}
+                    onChange={(e) => setLoginId(e.target.value.trim())}
+                    className="pl-16 h-11 text-sm font-semibold tracking-wider rounded-xl font-mono"
+                    required
+                    autoFocus
+                  />
+                </>
+              ) : (
+                <>
+                  <Phone className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Mobile number or admin email"
+                    value={loginId}
+                    onChange={(e) => setLoginId(e.target.value.trim())}
+                    className="pl-9 h-11 text-sm font-semibold rounded-xl"
+                    required
+                    autoFocus
+                  />
+                </>
+              )}
             </div>
           </div>
 
