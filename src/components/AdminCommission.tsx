@@ -22,6 +22,9 @@ import {
   Sparkles,
   FileText,
   Building2,
+  BookOpen,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +39,8 @@ import { toast } from "sonner";
 import { fmtIST, gameLabel } from "@/lib/matka";
 import { PrinterStatusBadge } from "./PrinterStatusBadge";
 import { printerManager, usePrinter, printViaSystem, printAgentHisabViaSystem, type AgentHisabPrintData } from "@/lib/thermalPrinter";
+import { TraditionalKhataModal } from "./TraditionalKhataModal";
+import { getMarketShift } from "@/lib/khataBahi";
 
 type Market = { id: string; name: string };
 
@@ -128,6 +133,8 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
   const [selectedAgentSlip, setSelectedAgentSlip] = useState<AgentSummary | null>(null);
   const [selectedSlipMarketId, setSelectedSlipMarketId] = useState<string>("all");
   const [selectedAgentBets, setSelectedAgentBets] = useState<AgentSummary | null>(null);
+  const [selectedKhataAgent, setSelectedKhataAgent] = useState<AgentSummary | null>(null);
+  const [shiftFilter, setShiftFilter] = useState<"all" | "day" | "night">("all");
   const [editingRateAgentId, setEditingRateAgentId] = useState<string | null>(null);
   const [tempRateInput, setTempRateInput] = useState<string>("10");
   const [copiedSlip, setCopiedSlip] = useState(false);
@@ -198,11 +205,22 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
 
   const marketName = (id: string) => markets.find((m) => m.id === id)?.name ?? "—";
 
-  // Filter bets by market if selected in top bar
+  // Filter bets by market and shift if selected in top bar
   const filteredBets = useMemo(() => {
-    if (marketFilter === "all") return bets;
-    return bets.filter((b) => b.market_id === marketFilter);
-  }, [bets, marketFilter]);
+    let res = bets;
+    if (marketFilter !== "all") {
+      res = res.filter((b) => b.market_id === marketFilter);
+    }
+    if (shiftFilter !== "all") {
+      const marketLookup = new Map(markets.map((m) => [m.id, m]));
+      res = res.filter((b) => {
+        const m = marketLookup.get(b.market_id);
+        if (!m) return false;
+        return getMarketShift(m.name, (m as any).close_time) === shiftFilter;
+      });
+    }
+    return res;
+  }, [bets, marketFilter, shiftFilter, markets]);
 
   // Map user names
   const userMap = useMemo(() => {
@@ -675,6 +693,56 @@ _PlayOn Official Matka Management System_`;
         )}
 
         {/* Market Filter Bar */}
+        {/* Shift Filter (Day Shift / Night Shift / All) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">शिफ्ट फिल्टर (Shift):</span>
+            <div className="flex rounded-lg border bg-secondary/50 p-0.5">
+              <button
+                type="button"
+                onClick={() => setShiftFilter("all")}
+                className={`rounded-md px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
+                  shiftFilter === "all"
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All (दोन्ही)
+              </button>
+              <button
+                type="button"
+                onClick={() => setShiftFilter("day")}
+                className={`rounded-md px-2.5 py-1 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  shiftFilter === "day"
+                    ? "bg-[#f43f5e] text-white shadow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Sun className="h-3 w-3" />
+                <span>🌸 Day Shift (डे)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShiftFilter("night")}
+                className={`rounded-md px-2.5 py-1 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  shiftFilter === "night"
+                    ? "bg-[#2563eb] text-white shadow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Moon className="h-3 w-3" />
+                <span>🔷 Night Shift (नाईट)</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="text-[11px] text-muted-foreground hidden sm:block">
+            {shiftFilter === "day" && "🌸 डे बाजार: Subah se shaam ke markets (Pink Slip)"}
+            {shiftFilter === "night" && "🔷 नाईट बाजार: Shaam ke baad ke markets (Blue Slip)"}
+            {shiftFilter === "all" && "🌟 Day & Night dono shifts ka combined view"}
+          </div>
+        </div>
+
         <div className="space-y-1.5 border-t border-border/60 pt-3">
           <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground px-0.5">
             <span>Filter by Bazar / Market:</span>
@@ -1016,6 +1084,17 @@ _PlayOn Official Matka Management System_`;
                     {/* Actions */}
                     <td className="p-3 pr-4 text-center align-top">
                       <div className="flex items-center justify-center gap-1.5">
+                        {/* Traditional Khata-Bahi (Pink/Blue Slip) */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedKhataAgent(a)}
+                          className="flex items-center gap-1 rounded-lg border border-gold/40 bg-gold/15 hover:bg-gold/25 text-gold font-bold px-2 py-1 text-xs transition-all shadow-xs cursor-pointer"
+                          title="पारंपरिक खाता-बही (Day Pink Slip / Night Blue Slip)"
+                        >
+                          <BookOpen className="h-3.5 w-3.5" />
+                          <span>खाता-बही</span>
+                        </button>
+
                         {/* WhatsApp Share Button */}
                         <button
                           type="button"
@@ -1316,6 +1395,21 @@ _PlayOn Official Matka Management System_`;
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* TRADITIONAL KHATA-BAHI MODAL (PINK & BLUE SLIP) */}
+      {selectedKhataAgent && (
+        <TraditionalKhataModal
+          open={!!selectedKhataAgent}
+          onOpenChange={(open) => {
+            if (!open) setSelectedKhataAgent(null);
+          }}
+          agent={selectedKhataAgent}
+          dateStrDisplay={dateLabel}
+          rawDateStr={targetDate}
+          allMarkets={markets}
+          initialShift={shiftFilter === "all" ? "day" : shiftFilter}
+        />
       )}
     </section>
   );
