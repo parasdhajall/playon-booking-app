@@ -111,6 +111,10 @@ function PlayPage() {
   const [selectedJodis, setSelectedJodis] = useState<string[]>([]);
   const [jodiPoints, setJodiPoints] = useState<Record<string, number>>({});
 
+  // Multi-select and Search state for Pannas (Single, Double, Triple Panna)
+  const [selectedPannas, setSelectedPannas] = useState<string[]>([]);
+  const [pannaSearch, setPannaSearch] = useState<string>("");
+
   // Ank Bulk state (digits 0 to 9)
   const [ankPoints, setAnkPoints] = useState<Record<number, number>>({});
 
@@ -164,6 +168,8 @@ function PlayPage() {
     }
     setGame(newGame);
     setSelectedNumber(null);
+    setSelectedPannas([]);
+    setPannaSearch("");
     setSelectedJodis([]);
     setJodiPoints({});
     setAnkPoints({});
@@ -175,6 +181,28 @@ function PlayPage() {
     setJodiFamilyInput("");
     setActiveJodiFamily(null);
     setSelectedFamilyJodis([]);
+  };
+
+  const togglePanna = (p: string) => {
+    setSelectedPannas((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
+  };
+
+  const toggleAnkPannas = (rowPannas: string[]) => {
+    setSelectedPannas((prev) => {
+      const allSelected = rowPannas.length > 0 && rowPannas.every((p) => prev.includes(p));
+      if (allSelected) {
+        return prev.filter((p) => !rowPannas.includes(p));
+      } else {
+        const set = new Set([...prev, ...rowPannas]);
+        return Array.from(set);
+      }
+    });
+  };
+
+  const clearSelectedPannas = () => {
+    setSelectedPannas([]);
   };
 
   const selectNumber = (num: string) => {
@@ -377,6 +405,40 @@ function PlayPage() {
     ]);
     if (ok) {
       setSelectedNumber(null);
+    }
+    return ok;
+  };
+
+  // Add Multi-selected Pannas to Bucket
+  const handleAddPannasToBucket = (): boolean => {
+    if (marketClosed) {
+      toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
+      return false;
+    }
+    if (effSession === "open" && openClosed) {
+      toast.error(`Open session has closed for ${m?.name} (${fmtTime(m?.open_time || "")}).`);
+      return false;
+    }
+    if (selectedPannas.length === 0) {
+      toast.error("Please select at least one Panna");
+      return false;
+    }
+    if (!numPoints || numPoints < 5) {
+      toast.error("Minimum bet per Panna is ₹5. Please enter ₹5 or more.");
+      return false;
+    }
+
+    const bets = selectedPannas.map((p) => ({
+      game,
+      gameLabel: g.label,
+      session: effSession,
+      number: p,
+      points: numPoints,
+    }));
+
+    const ok = addToBucket(bets);
+    if (ok) {
+      setSelectedPannas([]);
     }
     return ok;
   };
@@ -785,6 +847,18 @@ function PlayPage() {
       return;
     }
 
+    if (game === "single_panna" || game === "double_panna" || game === "triple_panna") {
+      if (selectedPannas.length > 0) {
+        const ok = handleAddPannasToBucket();
+        if (ok) setIsBucketOpen(true);
+      } else if (bucket.length > 0) {
+        setIsBucketOpen(true);
+      } else {
+        toast.error("Please select at least one Panna first");
+      }
+      return;
+    }
+
     if (selectedNumber || game.includes("sangam")) {
       const ok = handleSingleAddToBucket();
       if (ok) setIsBucketOpen(true);
@@ -990,12 +1064,12 @@ function PlayPage() {
           </div>
         )}
 
-        {/* Section Header: "Select Panna" + Multiplier Badge (only for standard single games) */}
-        {game !== "jodi_bulk" && game !== "ank_bulk" && game !== "family_panna" && game !== "family_jodi" && (
+        {/* Section Header: "Select Number" + Multiplier Badge (only for games not handled by dedicated UI) */}
+        {!game.includes("panna") && game !== "jodi_bulk" && game !== "ank_bulk" && game !== "family_jodi" && (
           <div className="flex items-center justify-between border-b pb-2.5">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-foreground">
-                {game.includes("panna") ? "Select Panna" : "Select Number"}
+                Select Number
               </span>
               <span className="rounded-md border bg-secondary px-2 py-0.5 text-xs font-bold text-gold">
                 ×{g.rate}
@@ -1018,31 +1092,99 @@ function PlayPage() {
           </div>
         )}
 
-        {/* 1. SINGLE PANNA GRID (Only 1 Panna selectable at a time) */}
+        {/* Panna Search & Multi-Selection Bar */}
+        {(game === "single_panna" || game === "double_panna" || game === "triple_panna") && (
+          <div className="space-y-2 rounded-xl border border-border/80 bg-background/50 p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-foreground">{g.label}</span>
+                <span className="rounded-md border bg-secondary px-2 py-0.5 text-xs font-bold text-gold">
+                  ×{g.rate}
+                </span>
+              </div>
+              {selectedPannas.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-primary">
+                    {selectedPannas.length} Selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearSelectedPannas}
+                    className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-0.5 ml-1"
+                  >
+                    <X className="h-3.5 w-3.5" /> Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Quick search input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={`Search ${g.label} (e.g. 128 or Ank digit)...`}
+                value={pannaSearch}
+                onChange={(e) => setPannaSearch(e.target.value.trim())}
+                className="pl-9 pr-8 h-9 text-xs rounded-xl bg-card border-border/80"
+              />
+              {pannaSearch && (
+                <button
+                  type="button"
+                  onClick={() => setPannaSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 1. SINGLE PANNA GRID (Multi-select + Search Filter) */}
         {game === "single_panna" && (
           <div className="space-y-2.5">
             {ANK_LIST.map((ank) => {
-              const pannas = SINGLE_PANNA_BY_ANK[ank] ?? [];
+              const allPannas = SINGLE_PANNA_BY_ANK[ank] ?? [];
+              const search = pannaSearch.trim();
+              const pannas = search
+                ? allPannas.filter((p) => p.includes(search) || String(ank) === search)
+                : allPannas;
+
+              if (pannas.length === 0) return null;
+
+              const allRowSelected = pannas.length > 0 && pannas.every((p) => selectedPannas.includes(p));
 
               return (
                 <div
                   key={ank}
                   className="flex items-center gap-2 rounded-xl border border-border/80 bg-background/50 p-2.5"
                 >
-                  {/* Left Ank Label */}
-                  <div className="flex h-10 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary font-display text-xl font-bold text-muted-foreground border">
-                    {ank}
-                  </div>
+                  {/* Left Ank Label (tap to toggle all for this Ank) */}
+                  <button
+                    type="button"
+                    title={`Select/Deselect all for Ank ${ank}`}
+                    onClick={() => toggleAnkPannas(pannas)}
+                    className={`flex flex-col h-11 w-10 shrink-0 items-center justify-center rounded-lg font-display transition-all border ${
+                      allRowSelected
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-secondary text-foreground hover:border-primary/60 border-border"
+                    }`}
+                  >
+                    <span className="text-lg font-bold leading-none">{ank}</span>
+                    <span className="text-[9px] uppercase tracking-wider font-sans opacity-70">
+                      {allRowSelected ? "✓ All" : "Ank"}
+                    </span>
+                  </button>
 
                   {/* Panna Pills Grid */}
                   <div className="flex flex-wrap gap-1.5 flex-1">
                     {pannas.map((p) => {
-                      const isSel = selectedNumber === p;
+                      const isSel = selectedPannas.includes(p);
                       return (
                         <button
                           key={p}
                           type="button"
-                          onClick={() => selectNumber(p)}
+                          onClick={() => togglePanna(p)}
                           className={`rounded-lg px-2.5 py-1.5 font-mono text-xs font-bold tracking-wider transition-all ${
                             isSel
                               ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary scale-105"
@@ -1060,31 +1202,51 @@ function PlayPage() {
           </div>
         )}
 
-        {/* 2. DOUBLE PANNA GRID (Only 1 Panna selectable at a time) */}
+        {/* 2. DOUBLE PANNA GRID (Multi-select + Search Filter) */}
         {game === "double_panna" && (
           <div className="space-y-2.5">
             {ANK_LIST.map((ank) => {
-              const pannas = DOUBLE_PANNA_BY_ANK[ank] ?? [];
+              const allPannas = DOUBLE_PANNA_BY_ANK[ank] ?? [];
+              const search = pannaSearch.trim();
+              const pannas = search
+                ? allPannas.filter((p) => p.includes(search) || String(ank) === search)
+                : allPannas;
+
+              if (pannas.length === 0) return null;
+
+              const allRowSelected = pannas.length > 0 && pannas.every((p) => selectedPannas.includes(p));
 
               return (
                 <div
                   key={ank}
                   className="flex items-center gap-2 rounded-xl border border-border/80 bg-background/50 p-2.5"
                 >
-                  {/* Left Ank Label */}
-                  <div className="flex h-10 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary font-display text-xl font-bold text-muted-foreground border">
-                    {ank}
-                  </div>
+                  {/* Left Ank Label (tap to toggle all for this Ank) */}
+                  <button
+                    type="button"
+                    title={`Select/Deselect all for Ank ${ank}`}
+                    onClick={() => toggleAnkPannas(pannas)}
+                    className={`flex flex-col h-11 w-10 shrink-0 items-center justify-center rounded-lg font-display transition-all border ${
+                      allRowSelected
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-secondary text-foreground hover:border-primary/60 border-border"
+                    }`}
+                  >
+                    <span className="text-lg font-bold leading-none">{ank}</span>
+                    <span className="text-[9px] uppercase tracking-wider font-sans opacity-70">
+                      {allRowSelected ? "✓ All" : "Ank"}
+                    </span>
+                  </button>
 
                   {/* Panna Pills Grid */}
                   <div className="flex flex-wrap gap-1.5 flex-1">
                     {pannas.map((p) => {
-                      const isSel = selectedNumber === p;
+                      const isSel = selectedPannas.includes(p);
                       return (
                         <button
                           key={p}
                           type="button"
-                          onClick={() => selectNumber(p)}
+                          onClick={() => togglePanna(p)}
                           className={`rounded-lg px-2.5 py-1.5 font-mono text-xs font-bold tracking-wider transition-all ${
                             isSel
                               ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary scale-105"
@@ -1102,26 +1264,43 @@ function PlayPage() {
           </div>
         )}
 
-        {/* 3. TRIPLE PANNA GRID (Only 1 Panna selectable) */}
+        {/* 3. TRIPLE PANNA GRID (Multi-select + Search Filter) */}
         {game === "triple_panna" && (
-          <div className="grid grid-cols-5 gap-2.5 p-2 rounded-xl bg-background/40 border">
-            {TRIPLE_PANNAS.map((p) => {
-              const isSel = selectedNumber === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => selectNumber(p)}
-                  className={`rounded-xl py-3 font-mono text-sm font-bold tracking-widest transition-all ${
-                    isSel
-                      ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary scale-105"
-                      : "bg-card border border-border/80 text-foreground hover:border-primary hover:bg-secondary"
-                  }`}
-                >
-                  {p}
-                </button>
-              );
-            })}
+          <div className="space-y-3">
+            <div className="grid grid-cols-5 gap-2.5 p-2 rounded-xl bg-background/40 border">
+              {(() => {
+                const search = pannaSearch.trim();
+                const filtered = search
+                  ? TRIPLE_PANNAS.filter((p) => p.includes(search))
+                  : TRIPLE_PANNAS;
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="col-span-5 py-6 text-center text-xs text-muted-foreground">
+                      No Triple Panna matching "{pannaSearch}"
+                    </div>
+                  );
+                }
+
+                return filtered.map((p) => {
+                  const isSel = selectedPannas.includes(p);
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => togglePanna(p)}
+                      className={`rounded-xl py-3 font-mono text-sm font-bold tracking-widest transition-all ${
+                        isSel
+                          ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary scale-105"
+                          : "bg-card border border-border/80 text-foreground hover:border-primary hover:bg-secondary"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                });
+              })()}
+            </div>
           </div>
         )}
 
@@ -2079,6 +2258,107 @@ function PlayPage() {
                     className="flex-1 h-11 text-xs font-bold rounded-xl shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     Confirm & Review (₹{totalFamilyPoints})
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (game === "single_panna" || game === "double_panna" || game === "triple_panna") ? (
+            /* B.3 PANNA MULTI-SELECT BOTTOM BAR */
+            <div className="space-y-2">
+              {/* Points Input & Quick Presets */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground font-medium">Per Panna:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold text-gold">₹</span>
+                    <Input
+                      type="number"
+                      min={5}
+                      step={5}
+                      placeholder="Min ₹5"
+                      value={points}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") {
+                          setPoints("");
+                        } else {
+                          const n = parseInt(val, 10);
+                          setPoints(isNaN(n) ? "" : n);
+                        }
+                      }}
+                      className="w-20 text-center font-bold text-sm h-8"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick amount chips */}
+                <div className="flex gap-1 overflow-x-auto">
+                  {POINT_PRESETS.map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setPoints(amt)}
+                      className={`rounded-md px-2.5 py-1 text-xs font-semibold border transition-colors ${
+                        points === amt
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-card hover:bg-secondary text-foreground"
+                      }`}
+                    >
+                      ₹{amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedPannas.length > 0 && (
+                <div className="flex items-center justify-between text-xs px-1">
+                  <span className="text-muted-foreground">
+                    Playing: <strong className="text-foreground">{selectedPannas.length} Pannas</strong> ({effSession.toUpperCase()})
+                  </span>
+                  <span className="font-semibold text-gold">
+                    Total: <strong>₹{selectedPannas.length * numPoints}</strong> ({selectedPannas.length} × ₹{numPoints}) · Pays {g.rate}×
+                  </span>
+                </div>
+              )}
+
+              {marketClosed ? (
+                <Button disabled className="w-full h-11 text-sm font-semibold rounded-xl bg-muted text-muted-foreground">
+                  Market Closed for Today
+                </Button>
+              ) : effSession === "open" && openClosed ? (
+                <Button disabled className="w-full h-11 text-sm font-semibold rounded-xl bg-muted text-muted-foreground">
+                  Open Session Closed
+                </Button>
+              ) : selectedPannas.length === 0 ? (
+                <div className="flex gap-2">
+                  <Button disabled className="flex-1 h-11 text-xs font-semibold rounded-xl bg-muted text-muted-foreground">
+                    Select panna(s) & enter amount (₹)
+                  </Button>
+                  {bucket.length > 0 && (
+                    <Button
+                      type="button"
+                      onClick={() => setIsBucketOpen(true)}
+                      className="h-11 px-4 text-xs font-bold rounded-xl bg-gold text-slate-950 hover:bg-gold/90 shadow-sm"
+                    >
+                      <ShoppingBag className="h-4 w-4 mr-1.5" /> Bucket ({bucket.length})
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleAddPannasToBucket}
+                    className="flex-1 h-11 text-xs font-bold rounded-xl border border-gold/40 bg-gold/10 hover:bg-gold/20 text-gold"
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Add ({selectedPannas.length}) to Bucket
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handlePlay}
+                    className="flex-1 h-11 text-xs font-bold rounded-xl shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    Confirm & Review (₹{selectedPannas.length * numPoints})
                   </Button>
                 </div>
               )}

@@ -10,10 +10,10 @@ export function resultLabel(open?: string | null, close?: string | null) {
 // parts: digit-length of each piece; pieces are joined with "-".
 // closeOnly: game is decided at close and must be played before the open result.
 export const GAMES = {
-  single: { label: "Single Digit", parts: [1], partLabels: ["Digit"], rate: 9, closeOnly: false },
-  ank_bulk: { label: "Ank Bulk", parts: [1], partLabels: ["Digit"], rate: 9, closeOnly: false, isBulk: true },
-  jodi: { label: "Jodi", parts: [2], partLabels: ["Jodi"], rate: 90, closeOnly: true },
-  jodi_bulk: { label: "Jodi Bulk", parts: [2], partLabels: ["Jodi"], rate: 90, closeOnly: true, isBulk: true },
+  single: { label: "Single Digit", parts: [1], partLabels: ["Digit"], rate: 9, closeOnly: false, legacy: true },
+  ank_bulk: { label: "Single Digit", parts: [1], partLabels: ["Digit"], rate: 9, closeOnly: false, isBulk: true },
+  jodi: { label: "Jodi", parts: [2], partLabels: ["Jodi"], rate: 90, closeOnly: true, legacy: true },
+  jodi_bulk: { label: "Jodi", parts: [2], partLabels: ["Jodi"], rate: 90, closeOnly: true, isBulk: true },
   family_jodi: { label: "Jodi Family", parts: [2], partLabels: ["Jodi"], rate: 90, closeOnly: true, isBulk: true },
   single_panna: { label: "Single Panna", parts: [3], partLabels: ["Panna (3 different digits)"], rate: 140, closeOnly: false },
   double_panna: { label: "Double Panna", parts: [3], partLabels: ["Panna (two same digits)"], rate: 280, closeOnly: false },
