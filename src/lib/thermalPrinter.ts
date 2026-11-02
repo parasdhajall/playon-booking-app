@@ -670,27 +670,38 @@ export function printReceiptHtml(htmlContent: string) {
   <title>Thermal Receipt Print</title>
   <style>
     @page {
-      size: 58mm auto;
+      size: 48mm auto;
       margin: 0;
     }
     @media print {
       html, body {
-        width: 58mm !important;
-        margin: 0 !important;
+        width: 48mm !important;
+        max-width: 48mm !important;
+        margin: 0 auto !important;
         padding: 0 !important;
         background: #fff !important;
         color: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .receipt-wrapper {
+        width: 48mm !important;
+        max-width: 48mm !important;
+        margin: 0 auto !important;
+        padding: 2mm 1mm !important;
       }
     }
     body {
-      width: 58mm;
+      width: 48mm;
+      max-width: 48mm;
       margin: 0 auto;
-      padding: 6px 8px;
-      font-family: 'Courier New', Courier, monospace, monospace;
-      font-size: 11px;
-      line-height: 1.3;
+      padding: 3px 2px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10px;
+      line-height: 1.25;
       color: #000;
       background: #fff;
+      word-break: break-word;
     }
     * {
       box-sizing: border-box;
@@ -698,7 +709,9 @@ export function printReceiptHtml(htmlContent: string) {
   </style>
 </head>
 <body>
-  ${htmlContent}
+  <div class="receipt-wrapper">
+    ${htmlContent}
+  </div>
 </body>
 </html>`);
   doc.close();
@@ -716,54 +729,61 @@ export function printReceiptHtml(htmlContent: string) {
 
 export function generateAgentHisabHtml(data: AgentHisabPrintData): string {
   return `
-    <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-      <div style="font-size: 16px; font-weight: 900; letter-spacing: 1px;">PLAY ON</div>
-      <div style="font-size: 11px; font-weight: bold; text-transform: uppercase;">AGENT HISAB PARCHI</div>
-      <div style="font-size: 10px; color: #333;">Date: ${data.dateStr}</div>
-    </div>
+    <div style="width: 48mm; max-width: 48mm; margin: 0 auto; box-sizing: border-box; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.3; color: #000; word-break: break-word;">
+      <!-- Header -->
+      <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 5px;">
+        <div style="font-size: 15px; font-weight: 900; letter-spacing: 1px;">PLAY ON</div>
+        <div style="font-size: 10px; font-weight: bold; text-transform: uppercase;">AGENT HISAB PARCHI</div>
+        <div style="font-size: 9px; color: #333;">Date: ${data.dateStr}</div>
+      </div>
 
-    <div style="font-size: 11px; border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-      <div style="display: flex; justify-content: space-between; font-weight: bold;">
-        <span>Agent:</span>
-        <span>${data.agentName}</span>
+      <!-- Agent & Market Info -->
+      <div style="font-size: 10px; border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 5px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+          <span>Agent:</span>
+          <span>${data.agentName}</span>
+        </div>
+        ${data.phone ? `
+        <div style="display: flex; justify-content: space-between; font-size: 9.5px;">
+          <span>Mobile:</span>
+          <span>${data.phone}</span>
+        </div>` : ""}
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+          <span>Bazar:</span>
+          <span style="max-width: 28mm; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${data.marketName}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 9.5px;">
+          <span>Plays:</span>
+          <span>${data.playCount} Bets</span>
+        </div>
       </div>
-      ${data.phone ? `
-      <div style="display: flex; justify-content: space-between;">
-        <span>Mobile:</span>
-        <span>${data.phone}</span>
-      </div>` : ""}
-      <div style="display: flex; justify-content: space-between; font-weight: bold;">
-        <span>Bazar:</span>
-        <span>${data.marketName}</span>
-      </div>
-      <div style="display: flex; justify-content: space-between;">
-        <span>Total Plays:</span>
-        <span>${data.playCount} Plays</span>
-      </div>
-    </div>
 
-    <div style="font-size: 11px; border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-      <div style="display: flex; justify-content: space-between;">
-        <span>Total Sale:</span>
-        <span style="font-weight: bold;">Rs.${data.totalSale.toLocaleString("en-IN")}</span>
+      <!-- Breakdown Table -->
+      <div style="font-size: 10px; border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 5px;">
+        <div style="display: flex; justify-content: space-between;">
+          <span>Total Sale:</span>
+          <span style="font-weight: bold;">Rs.${data.totalSale.toLocaleString("en-IN")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Comm (${data.commissionRate}%):</span>
+          <span style="font-weight: bold;">Rs.${data.totalCommission.toLocaleString("en-IN")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Winning:</span>
+          <span style="font-weight: bold;">Rs.${data.totalWinning.toLocaleString("en-IN")}</span>
+        </div>
       </div>
-      <div style="display: flex; justify-content: space-between;">
-        <span>Commission (${data.commissionRate}%):</span>
-        <span style="font-weight: bold;">Rs.${data.totalCommission.toLocaleString("en-IN")}</span>
-      </div>
-      <div style="display: flex; justify-content: space-between;">
-        <span>Winning Amount:</span>
-        <span style="font-weight: bold;">Rs.${data.totalWinning.toLocaleString("en-IN")}</span>
-      </div>
-    </div>
 
-    <div style="text-align: center; padding: 6px; border: 1px solid #000; margin-bottom: 8px;">
-      <div style="font-size: 10px; font-weight: bold; text-transform: uppercase;">TOTAL AMOUNT</div>
-      <div style="font-size: 18px; font-weight: 900;">Rs.${data.totalAmount.toLocaleString("en-IN")}</div>
-    </div>
+      <!-- Total Box -->
+      <div style="text-align: center; padding: 4px; border: 1px solid #000; margin-bottom: 6px;">
+        <div style="font-size: 9px; font-weight: bold; text-transform: uppercase;">TOTAL AMOUNT</div>
+        <div style="font-size: 16px; font-weight: 900;">Rs.${data.totalAmount.toLocaleString("en-IN")}</div>
+      </div>
 
-    <div style="text-align: center; font-size: 9px; padding-top: 4px;">
-      *** Thank You for Playing with PlayOn ***
+      <!-- Footer -->
+      <div style="text-align: center; font-size: 8.5px; padding-top: 2px;">
+        *** Thank You for Playing ***
+      </div>
     </div>
   `;
 }

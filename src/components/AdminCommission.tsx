@@ -1129,7 +1129,7 @@ _PlayOn Official Matka Management System_`;
             {/* 58mm Thermal Receipt Visual Container: NO ADMIN PROFIT, NO WALLET POINTS, CLEAN TOTAL */}
             <div
               id="printable-agent-slip"
-              className="my-3 p-4 bg-white text-black font-mono text-xs rounded-xl shadow-inner border border-dashed border-gray-400 select-all space-y-2.5"
+              className="my-3 w-full max-w-[240px] mx-auto p-3 bg-white text-black font-mono text-[11px] rounded-xl shadow-inner border border-dashed border-gray-400 select-all space-y-2"
             >
               {/* Receipt Header */}
               <div className="text-center space-y-0.5 border-b border-dashed border-gray-400 pb-2">
