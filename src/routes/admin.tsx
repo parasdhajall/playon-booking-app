@@ -786,7 +786,7 @@ function Admin() {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
               </span>
               <span className="font-semibold text-xs text-foreground tracking-wide flex items-center gap-1">
-                DPBoss.me & RSBoss Live Sync
+                DPBoss.net Live Sync
                 <span className="text-[10px] text-muted-foreground font-mono">({rsbossData?.source?.toUpperCase() || "CONNECTING"})</span>
               </span>
               {readyRsbossDeclarations.length > 0 && (
@@ -796,7 +796,7 @@ function Admin() {
               )}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Live market results fetched automatically from primary source <strong className="text-foreground">dpbossnet.me</strong> (with rsboss.net backup). Choose between Manual, 1-Click Semi-Auto, or Full-Auto declare.
+              Live market results fetched automatically from primary source <strong className="text-foreground">dpboss.net</strong> (with rsboss.net backup). Choose between Manual, 1-Click Semi-Auto, or Full-Auto declare.
             </p>
           </div>
 
@@ -845,7 +845,7 @@ function Admin() {
               disabled={isRsbossFetching}
               onClick={() => {
                 refetchRsboss();
-                toast.info("Checking rsboss.net for latest results...");
+                toast.info(`Checking ${rsbossData?.source === "rsboss" ? "rsboss.net" : "dpboss.net"} for latest results...`);
               }}
             >
               <RefreshCw className={`h-3 w-3 ${isRsbossFetching ? "animate-spin" : ""}`} />
@@ -1077,11 +1077,13 @@ function Admin() {
                     </div>
                   </div>
 
-                  {/* RSBoss Live Status Chip & 1-Click Action Bar */}
+                  {/* DPBoss / RSBoss Live Status Chip & 1-Click Action Bar */}
                   {live && (
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-secondary/40 px-3 py-1.5 text-xs border border-border/60">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-muted-foreground">rsboss.net Live:</span>
+                        <span className="font-semibold text-muted-foreground">
+                          {rsbossData?.source === "rsboss" ? "rsboss.net Live:" : "dpboss.net Live:"}
+                        </span>
                         <span className="font-mono font-bold text-foreground bg-background px-2 py-0.5 rounded border">
                           {live.rawResult}
                         </span>
