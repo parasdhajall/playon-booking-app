@@ -113,6 +113,7 @@ function PlayPage() {
 
   // Multi-select and Search state for Pannas (Single, Double, Triple Panna)
   const [selectedPannas, setSelectedPannas] = useState<string[]>([]);
+  const [pannaPoints, setPannaPoints] = useState<Record<string, number>>({});
   const [pannaSearch, setPannaSearch] = useState<string>("");
 
   // Ank Bulk state (digits 0 to 9)
@@ -169,6 +170,7 @@ function PlayPage() {
     setGame(newGame);
     setSelectedNumber(null);
     setSelectedPannas([]);
+    setPannaPoints({});
     setPannaSearch("");
     setSelectedJodis([]);
     setJodiPoints({});
@@ -184,26 +186,77 @@ function PlayPage() {
   };
 
   const togglePanna = (p: string) => {
-    setSelectedPannas((prev) =>
-      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-    );
+    setSelectedPannas((prev) => {
+      if (prev.includes(p)) {
+        const next = prev.filter((x) => x !== p);
+        setPannaPoints((pts) => {
+          const copy = { ...pts };
+          delete copy[p];
+          return copy;
+        });
+        return next;
+      } else {
+        setPannaPoints((pts) => ({
+          ...pts,
+          [p]: pts[p] || (numPoints >= 5 ? numPoints : 0),
+        }));
+        return [...prev, p];
+      }
+    });
+  };
+
+  const removePanna = (p: string) => {
+    setSelectedPannas((prev) => prev.filter((x) => x !== p));
+    setPannaPoints((pts) => {
+      const copy = { ...pts };
+      delete copy[p];
+      return copy;
+    });
   };
 
   const toggleAnkPannas = (rowPannas: string[]) => {
     setSelectedPannas((prev) => {
       const allSelected = rowPannas.length > 0 && rowPannas.every((p) => prev.includes(p));
       if (allSelected) {
+        setPannaPoints((pts) => {
+          const copy = { ...pts };
+          for (const p of rowPannas) {
+            delete copy[p];
+          }
+          return copy;
+        });
         return prev.filter((p) => !rowPannas.includes(p));
       } else {
         const set = new Set([...prev, ...rowPannas]);
+        setPannaPoints((pts) => {
+          const copy = { ...pts };
+          for (const p of rowPannas) {
+            if (!copy[p]) {
+              copy[p] = numPoints >= 5 ? numPoints : 0;
+            }
+          }
+          return copy;
+        });
         return Array.from(set);
       }
     });
   };
 
+  const setAllPannaPoints = (pts: number) => {
+    setPoints(pts);
+    const updated: Record<string, number> = {};
+    for (const p of selectedPannas) {
+      updated[p] = pts;
+    }
+    setPannaPoints(updated);
+  };
+
   const clearSelectedPannas = () => {
     setSelectedPannas([]);
+    setPannaPoints({});
   };
+
+  const totalPannaPoints = selectedPannas.reduce((sum, p) => sum + (pannaPoints[p] || 0), 0);
 
   const selectNumber = (num: string) => {
     // Only one number selected at a time (toggle if tapped again)
@@ -423,22 +476,25 @@ function PlayPage() {
       toast.error("Please select at least one Panna");
       return false;
     }
-    if (!numPoints || numPoints < 5) {
-      toast.error("Minimum bet per Panna is ₹5. Please enter ₹5 or more.");
-      return false;
-    }
 
     const bets = selectedPannas.map((p) => ({
       game,
       gameLabel: g.label,
       session: effSession,
       number: p,
-      points: numPoints,
+      points: pannaPoints[p] || (numPoints >= 5 ? numPoints : 0),
     }));
+
+    const anyInvalid = bets.some((b) => !b.points || b.points < 5);
+    if (anyInvalid) {
+      toast.error("Minimum bet per Panna is ₹5. Please enter ₹5 or more.");
+      return false;
+    }
 
     const ok = addToBucket(bets);
     if (ok) {
       setSelectedPannas([]);
+      setPannaPoints({});
     }
     return ok;
   };
@@ -1300,6 +1356,65 @@ function PlayPage() {
                   );
                 });
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* Points Per Panna Section (Matches Jodi Bulk row-by-row layout) */}
+        {(game === "single_panna" || game === "double_panna" || game === "triple_panna") && selectedPannas.length > 0 && (
+          <div className="space-y-2 rounded-2xl border border-border/80 bg-background/60 p-3.5 shadow-sm mt-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-foreground">Points Per Panna</h4>
+              {/* Quick presets to apply to all selected */}
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-muted-foreground mr-0.5">All:</span>
+                {[5, 10, 20, 50, 100].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setAllPannaPoints(amt)}
+                    className="rounded border bg-secondary px-1.5 py-0.5 text-[10px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    ₹{amt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {selectedPannas.map((panna) => (
+                <div key={panna} className="flex items-center gap-2">
+                  {/* Panna Badge */}
+                  <div className="flex h-11 w-14 shrink-0 items-center justify-center rounded-xl bg-secondary font-mono text-base font-bold text-foreground border">
+                    {panna}
+                  </div>
+
+                  {/* Amount Input */}
+                  <Input
+                    type="number"
+                    min={5}
+                    step={5}
+                    placeholder="₹ Amount"
+                    value={pannaPoints[panna] || ""}
+                    onChange={(e) =>
+                      setPannaPoints((pts) => ({
+                        ...pts,
+                        [panna]: Number(e.target.value) || 0,
+                      }))
+                    }
+                    className="h-11 flex-1 font-semibold text-sm bg-secondary/40"
+                  />
+
+                  {/* Red Delete Button */}
+                  <button
+                    type="button"
+                    onClick={() => removePanna(panna)}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -2263,60 +2378,15 @@ function PlayPage() {
               )}
             </div>
           ) : (game === "single_panna" || game === "double_panna" || game === "triple_panna") ? (
-            /* B.3 PANNA MULTI-SELECT BOTTOM BAR */
+            /* PANNA BULK BOTTOM BAR (Matches Jodi Bulk) */
             <div className="space-y-2">
-              {/* Points Input & Quick Presets */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground font-medium">Per Panna:</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-bold text-gold">₹</span>
-                    <Input
-                      type="number"
-                      min={5}
-                      step={5}
-                      placeholder="Min ₹5"
-                      value={points}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "") {
-                          setPoints("");
-                        } else {
-                          const n = parseInt(val, 10);
-                          setPoints(isNaN(n) ? "" : n);
-                        }
-                      }}
-                      className="w-20 text-center font-bold text-sm h-8"
-                    />
-                  </div>
-                </div>
-
-                {/* Quick amount chips */}
-                <div className="flex gap-1 overflow-x-auto">
-                  {POINT_PRESETS.map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setPoints(amt)}
-                      className={`rounded-md px-2.5 py-1 text-xs font-semibold border transition-colors ${
-                        points === amt
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card hover:bg-secondary text-foreground"
-                      }`}
-                    >
-                      ₹{amt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {selectedPannas.length > 0 && (
                 <div className="flex items-center justify-between text-xs px-1">
                   <span className="text-muted-foreground">
-                    Playing: <strong className="text-foreground">{selectedPannas.length} Pannas</strong> ({effSession.toUpperCase()})
+                    Selected: <strong className="text-foreground">{selectedPannas.length} Pannas</strong>
                   </span>
                   <span className="font-semibold text-gold">
-                    Total: <strong>₹{selectedPannas.length * numPoints}</strong> ({selectedPannas.length} × ₹{numPoints}) · Pays {g.rate}×
+                    Total: <strong>₹{totalPannaPoints}</strong> (Win Pays {g.rate}×)
                   </span>
                 </div>
               )}
@@ -2332,7 +2402,7 @@ function PlayPage() {
               ) : selectedPannas.length === 0 ? (
                 <div className="flex gap-2">
                   <Button disabled className="flex-1 h-11 text-xs font-semibold rounded-xl bg-muted text-muted-foreground">
-                    Select panna(s) & enter amount (₹)
+                    Select pannas and enter amount (₹)
                   </Button>
                   {bucket.length > 0 && (
                     <Button
@@ -2358,7 +2428,7 @@ function PlayPage() {
                     onClick={handlePlay}
                     className="flex-1 h-11 text-xs font-bold rounded-xl shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
-                    Confirm & Review (₹{selectedPannas.length * numPoints})
+                    Confirm & Review ({selectedPannas.length} Pannas)
                   </Button>
                 </div>
               )}
