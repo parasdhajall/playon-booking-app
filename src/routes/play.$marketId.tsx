@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useMemo, useCallback, useRef, memo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -172,6 +172,7 @@ function PlayPage() {
   const [points, setPoints] = useState<number | "">("");
   const numPoints = typeof points === "number" ? points : Number(points) || 0;
   const [busy, setBusy] = useState(false);
+  const isPlacingRef = useRef(false);
 
   // Bucket / Order Cart State
   const [bucket, setBucket] = useState<BucketItem[]>([]);
@@ -807,9 +808,9 @@ function PlayPage() {
     return ok;
   };
 
-  // Confirm and Place All Bucket Bets
+  // Confirm and Place All Bucket Bets (Guarded against double-clicks/rapid double-taps)
   const handleConfirmBucket = async () => {
-    if (busy) return;
+    if (busy || isPlacingRef.current) return;
     if (!user) {
       toast.error("Please sign in to place plays");
       navigate({ to: "/auth" });
@@ -831,96 +832,103 @@ function PlayPage() {
       return;
     }
 
-    const betsPayload = bucket.map((item) => ({
-      game:
-        item.game === "jodi_bulk" || (item.game as string) === "family_jodi"
-          ? "jodi"
-          : item.game === "ank_bulk"
-            ? "single"
-            : (item.game as string) === "family_panna"
-              ? getPannaTypeInfo(item.number).gameType
-              : item.game,
-      session: item.session,
-      number: item.number,
-      points: item.points,
-    }));
-
+    // Instant synchronous lock to block any second tap within 0 milliseconds
+    isPlacingRef.current = true;
     setBusy(true);
-    const { error } = await supabase.rpc("place_bucket_bets", {
-      _market: marketId,
-      _bets: betsPayload,
-    });
-    setBusy(false);
 
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    try {
+      const betsPayload = bucket.map((item) => ({
+        game:
+          item.game === "jodi_bulk" || (item.game as string) === "family_jodi"
+            ? "jodi"
+            : item.game === "ank_bulk"
+              ? "single"
+              : (item.game as string) === "family_panna"
+                ? getPannaTypeInfo(item.number).gameType
+                : item.game,
+        session: item.session,
+        number: item.number,
+        points: item.points,
+      }));
 
-    const placedCount = bucket.length;
-    const placedTotal = totalBucketAmount;
-
-    // Generate Thermal Receipt Slip Data
-    const now = new Date();
-    const dateStr = new Intl.DateTimeFormat("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).format(now);
-    const timeStr = new Intl.DateTimeFormat("en-IN", {
-      timeZone: "Asia/Kolkata",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(now);
-
-    const newReceipt: ReceiptData = {
-      slipId: `PO-${Date.now().toString().slice(-6)}`,
-      marketName: m?.name || "MARKET",
-      playerName: getPlayerDisplayName(user, profile),
-      dateStr,
-      timeStr,
-      items: bucket.map((b) => ({
-        gameLabel: b.gameLabel,
-        session: b.session,
-        number: b.number,
-        points: b.points,
-      })),
-      totalPoints: placedTotal,
-    };
-
-    setReceiptData(newReceipt);
-    setIsReceiptOpen(true);
-
-    // Auto-Print Receipt if printer is connected
-    if (printerManager.isConnected()) {
-      toast.info(`🖨️ Printing slip on ${printerManager.deviceName}...`);
-      printerManager.sendBytes(generateEscPosBytes(newReceipt)).then((res) => {
-        if (res.success) {
-          toast.success("Receipt printed on thermal printer!");
-        } else {
-          toast.error(`Print failed: ${res.message}`);
-        }
+      const { error } = await supabase.rpc("place_bucket_bets", {
+        _market: marketId,
+        _bets: betsPayload,
       });
-    } else {
-      toast("Tip: Connect your Bluetooth thermal printer to auto-print paper slips on confirm.", {
-        action: {
-          label: "Connect Printer",
-          onClick: () => printerManager.connect(),
-        },
-      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      const placedCount = bucket.length;
+      const placedTotal = totalBucketAmount;
+
+      // Generate Thermal Receipt Slip Data
+      const now = new Date();
+      const dateStr = new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(now);
+      const timeStr = new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }).format(now);
+
+      const newReceipt: ReceiptData = {
+        slipId: `PO-${Date.now().toString().slice(-6)}`,
+        marketName: m?.name || "MARKET",
+        playerName: getPlayerDisplayName(user, profile),
+        dateStr,
+        timeStr,
+        items: bucket.map((b) => ({
+          gameLabel: b.gameLabel,
+          session: b.session,
+          number: b.number,
+          points: b.points,
+        })),
+        totalPoints: placedTotal,
+      };
+
+      setReceiptData(newReceipt);
+      setIsReceiptOpen(true);
+
+      // Auto-Print Receipt if printer is connected
+      if (printerManager.isConnected()) {
+        toast.info(`🖨️ Printing slip on ${printerManager.deviceName}...`);
+        printerManager.sendBytes(generateEscPosBytes(newReceipt)).then((res) => {
+          if (res.success) {
+            toast.success("Receipt printed on thermal printer!");
+          } else {
+            toast.error(`Print failed: ${res.message}`);
+          }
+        });
+      } else {
+        toast("Tip: Connect your Bluetooth thermal printer to auto-print paper slips on confirm.", {
+          action: {
+            label: "Connect Printer",
+            onClick: () => printerManager.connect(),
+          },
+        });
+      }
+
+      toast.success(
+        `🎉 Success! Placed ${placedCount} bets on ${m?.name} (Total ₹${placedTotal})!`
+      );
+
+      setBucket([]);
+      setIsBucketOpen(false);
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: ["today-expense"] });
+      qc.invalidateQueries({ queryKey: ["market", marketId] });
+    } finally {
+      setBusy(false);
+      isPlacingRef.current = false;
     }
-
-    toast.success(
-      `🎉 Success! Placed ${placedCount} bets on ${m?.name} (Total ₹${placedTotal})!`
-    );
-
-    setBucket([]);
-    setIsBucketOpen(false);
-    qc.invalidateQueries({ queryKey: ["profile"] });
-    qc.invalidateQueries({ queryKey: ["today-expense"] });
-    qc.invalidateQueries({ queryKey: ["market", marketId] });
   };
 
   // Play button handler: queues active selection into bucket and opens bucket for confirmation
@@ -2705,7 +2713,9 @@ function PlayPage() {
             <Button
               onClick={handleConfirmBucket}
               disabled={busy || bucket.length === 0}
-              className="w-full h-12 text-sm font-bold rounded-xl shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-2"
+              className={`w-full h-12 text-sm font-bold rounded-xl shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-2 ${
+                busy ? "pointer-events-none opacity-60 cursor-not-allowed" : ""
+              }`}
             >
               {busy ? (
                 "Placing Orders…"
