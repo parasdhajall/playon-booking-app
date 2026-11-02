@@ -306,7 +306,7 @@ export function buildTraditionalKhataData(
   };
 }
 
-// 1-Click WhatsApp Message Formatter (Pure Devanagari Traditional Format)
+// 1-Click WhatsApp Message Formatter (Pure Devanagari Traditional Format with Monospace Alignment)
 export function generateKhataBahiWhatsAppMessage(data: TraditionalKhataData): string {
   const isPink = data.shift === "day";
   const shiftEmoji = isPink ? "🌸" : data.shift === "night" ? "🔷" : "🌟";
@@ -319,23 +319,21 @@ export function generateKhataBahiWhatsAppMessage(data: TraditionalKhataData): st
   if (data.phone) msg += `  मोबाईल: ${data.phone}\n`;
   msg += `  शिफ्ट: ${shiftEmoji} *${data.shiftLabel}*\n`;
   msg += `================================\n`;
-  msg += `*बाजार*            *धंदा*  *सुट्टा* *जेन्ट*  *पाना*\n`;
+  msg += `\`\`\`\n`;
+  msg += `बाजार         धंदा  सुट्टा जेन्ट  पाना\n`;
   msg += `--------------------------------\n`;
 
   data.rows.forEach((r) => {
-    const market = r.sessionLabel.padEnd(14, " ");
-    const dhanda = r.dhanda > 0 ? `${r.dhanda}`.padStart(5, " ") : "    -";
-    const sutta = r.suttaWin > 0 ? `${r.suttaWin}`.padStart(6, " ") : "     -";
-    const jent = r.jentWin > 0 ? `${r.jentWin}`.padStart(5, " ") : "    -";
-    let pannaStr = "-";
-    if (r.pannaWin > 0) {
-      pannaStr = `${r.pannaWin}${r.pannaNote ? ` (${r.pannaNote})` : ""}`;
-    }
-    const panna = pannaStr !== "-" ? pannaStr.padStart(6, " ") : "     -";
-    msg += `${market} ${dhanda} ${sutta} ${jent} ${panna}\n`;
+    const market = r.sessionLabelShort.slice(0, 10).padEnd(10, " ");
+    const dhanda = (r.dhanda > 0 ? `${r.dhanda}` : "-").padStart(6, " ");
+    const sutta = (r.suttaWin > 0 ? `${r.suttaWin}` : "-").padStart(5, " ");
+    const jent = (r.jentWin > 0 ? `${r.jentWin}` : "-").padStart(5, " ");
+    const panna = (r.pannaWin > 0 ? `${r.pannaWin}` : "-").padStart(6, " ");
+    msg += `${market}${dhanda}${sutta}${jent}${panna}\n`;
   });
 
   msg += `--------------------------------\n`;
+  msg += `\`\`\`\n`;
   msg += `*एकूण धंदा*              : ₹${data.totalDhanda.toLocaleString("en-IN")}\n`;
   const magilSign = data.magilNave >= 0 ? "+" : "-";
   msg += `*मागील नावे (पुराना बाकी)* : ${magilSign}₹${Math.abs(data.magilNave).toLocaleString("en-IN")}\n`;
@@ -448,3 +446,4 @@ export function generateKhataBahiEscPosBytes(data: TraditionalKhataData): Uint8A
   }
   return result;
 }
+

@@ -15,6 +15,10 @@ import {
   Layers,
   Phone,
   Calendar,
+  ImageIcon,
+  Download,
+  MessageSquare,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +37,7 @@ import {
   generateKhataBahiEscPosBytes,
   saveMagilNave,
 } from "@/lib/khataBahi";
+import { generateKhataSlipImageBlob } from "@/lib/khataImageGenerator";
 import { printerManager, usePrinter, isAndroidNativeApp } from "@/lib/thermalPrinter";
 import { PrinterStatusBadge } from "./PrinterStatusBadge";
 
@@ -111,7 +116,84 @@ export function TraditionalKhataModal({
     toast.success(`मागील नावे ₹${val} अपडेट केले!`);
   };
 
-  // 1-Click WhatsApp Send
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+  // 1-Click WhatsApp Photo Share (Exact visual slip image)
+  const handleShareImage = async () => {
+    try {
+      setIsGeneratingImage(true);
+      toast.info("फोटो पर्ची तयार होत आहे...");
+      const blob = await generateKhataSlipImageBlob(khataData);
+      const fileName = `Khata_${agent.name.replace(/\s+/g, "_")}_${khataData.shift}_${rawDateStr}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      // 1. Mobile Android / iOS: Native WhatsApp File Share
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `PLAYON BOOK - ${agent.name} (${khataData.shiftLabel})`,
+          text: `📖 PLAYON BOOK: ${agent.name} • ${khataData.shiftLabel}\nअंतिम बाकी: ₹${khataData.statusAmount.toLocaleString("en-IN")} (${khataData.status === "nave" ? "नावे" : "जमा"})`,
+        });
+        toast.success("फोटो WhatsApp वर पाठवला!");
+        setIsGeneratingImage(false);
+        return;
+      }
+
+      // 2. Desktop / PC Fallback: Copy Image to Clipboard & Open WhatsApp
+      if (navigator.clipboard && (window as any).ClipboardItem) {
+        try {
+          await navigator.clipboard.write([
+            new (window as any).ClipboardItem({ "image/png": blob }),
+          ]);
+          toast.success("📋 फोटो कॉपी झाला! WhatsApp चॅटमध्ये Ctrl + V दाबा!");
+
+          const cleanPhone = (agent.phone || "").replace(/\D/g, "");
+          const targetUrl =
+            cleanPhone.length >= 10 ? `https://wa.me/91${cleanPhone.slice(-10)}` : `https://wa.me/`;
+          window.open(targetUrl, "_blank");
+          setIsGeneratingImage(false);
+          return;
+        } catch (clipErr) {
+          console.warn("Clipboard write failed", clipErr);
+        }
+      }
+
+      // 3. Fallback: Download file directly
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("फोटो डाउनलोड झाला!");
+      setIsGeneratingImage(false);
+    } catch (err: any) {
+      setIsGeneratingImage(false);
+      toast.error(`फोटो शेअर करण्यात त्रुटी: ${err?.message || "त्रुटी"}`);
+    }
+  };
+
+  // Direct Download Image Button
+  const handleDownloadImage = async () => {
+    try {
+      setIsGeneratingImage(true);
+      const blob = await generateKhataSlipImageBlob(khataData);
+      const fileName = `Khata_${agent.name.replace(/\s+/g, "_")}_${khataData.shift}_${rawDateStr}.png`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("फोटो डाऊनलोड झाला!");
+      setIsGeneratingImage(false);
+    } catch (err: any) {
+      setIsGeneratingImage(false);
+      toast.error("डाऊनलोड करण्यात त्रुटी आली.");
+    }
+  };
+
+  // 1-Click WhatsApp Text Send
   const handleWhatsAppShare = () => {
     const msg = generateKhataBahiWhatsAppMessage(khataData);
     const cleanPhone = (agent.phone || "").replace(/\D/g, "");
@@ -547,59 +629,98 @@ export function TraditionalKhataModal({
         </div>
 
         {/* 3. Bottom Action Buttons Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t">
-          {/* WhatsApp Button */}
-          <Button
-            type="button"
-            onClick={handleWhatsAppShare}
-            className="h-10 text-xs font-bold bg-[#25D366] hover:bg-[#20ba59] text-white flex items-center justify-center gap-1.5 shadow-sm rounded-xl"
-          >
-            <Share2 className="h-3.5 w-3.5" />
-            <span>WhatsApp पाठवा</span>
-          </Button>
+        <div className="space-y-2 pt-2 border-t">
+          {/* Main Action: WhatsApp Photo Slip (Exact visual slip image) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Button
+              type="button"
+              onClick={handleShareImage}
+              disabled={isGeneratingImage}
+              className="h-11 text-xs sm:text-sm font-bold bg-[#25D366] hover:bg-[#20ba59] text-white flex items-center justify-center gap-2 shadow-md rounded-xl cursor-pointer"
+            >
+              {isGeneratingImage ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>फोटो तयार होत आहे...</span>
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="h-4 w-4" />
+                  <span>WhatsApp वर फोटो पाठवा (Share Image)</span>
+                </>
+              )}
+            </Button>
 
-          {/* Thermal Print Button */}
-          <Button
-            type="button"
-            onClick={handleThermalPrint}
-            disabled={isPrinting}
-            className="h-10 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-1.5 shadow-sm rounded-xl"
-          >
-            <Printer className="h-3.5 w-3.5" />
-            <span>{isPrinting ? "प्रिंटिंग..." : "थर्मल प्रिंट (58mm)"}</span>
-          </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDownloadImage}
+              disabled={isGeneratingImage}
+              className="h-11 text-xs font-bold rounded-xl flex items-center justify-center gap-2 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
+            >
+              <Download className="h-4 w-4" />
+              <span>फोटो डाऊनलोड करा (Download Slip)</span>
+            </Button>
+          </div>
 
-          {/* Copy Button */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleCopyText}
-            className="h-10 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5"
-          >
-            {copied ? (
-              <>
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
-                <span>कॉपी झाले!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="h-3.5 w-3.5" />
-                <span>पर्ची कॉपी</span>
-              </>
-            )}
-          </Button>
+          {/* Secondary Actions */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-0.5">
+            {/* WhatsApp Text Button */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleWhatsAppShare}
+              className="h-9 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+              title="मजकूर स्वरूपात पाठवा (Send as Monospace Text)"
+            >
+              <MessageSquare className="h-3.5 w-3.5 text-[#25D366]" />
+              <span className="truncate">मजकूर पाठवा</span>
+            </Button>
 
-          {/* Close Button */}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => onOpenChange(false)}
-            className="h-10 text-xs font-bold rounded-xl"
-          >
-            बंद करा (Close)
-          </Button>
+            {/* Thermal Print Button */}
+            <Button
+              type="button"
+              onClick={handleThermalPrint}
+              disabled={isPrinting}
+              className="h-9 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-1.5 shadow-xs rounded-xl cursor-pointer"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span className="truncate">{isPrinting ? "प्रिंट..." : "थर्मल प्रिंट"}</span>
+            </Button>
+
+            {/* Copy Button */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCopyText}
+              className="h-9 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="truncate">कॉपी झाले!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  <span className="truncate">मजकूर कॉपी</span>
+                </>
+              )}
+            </Button>
+
+            {/* Close Button */}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => onOpenChange(false)}
+              className="h-9 text-xs font-semibold rounded-xl col-span-3 sm:col-span-1 cursor-pointer"
+            >
+              बंद करा
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
