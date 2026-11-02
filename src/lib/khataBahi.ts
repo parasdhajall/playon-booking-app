@@ -14,14 +14,14 @@ export type TraditionalMarketSessionRow = {
   suttaWin: number;          // Single digit winning amount
   jentWin: number;           // Jodi winning amount
   pannaWin: number;          // Panna / Patti winning amount
-  pannaNote?: string;        // e.g. "10 DP"
+  pannaNote?: string | undefined;        // e.g. "10 DP"
   totalWin: number;          // sutta + jent + panna
 };
 
 export type TraditionalKhataData = {
   agentId: string;
   agentName: string;
-  phone?: string;
+  phone?: string | undefined;
   dateStr: string;           // Display date, e.g. "01/11/2026"
   rawDateStr: string;        // YYYY-MM-DD
   shift: ShiftType;

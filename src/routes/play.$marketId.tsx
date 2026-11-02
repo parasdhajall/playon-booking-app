@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, Clock, X, ShoppingBag, Trash2, Plus, CheckCircle2, Printer, Layers, Sparkles, Table, Check, Search, Info, Play, AlertCircle, AlertTriangle, Lock, User } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, X, ShoppingBag, Trash2, Plus, CheckCircle2, Printer, Layers, Sparkles, Table, Check, Search, Info, Play, AlertCircle, AlertTriangle, Lock, User, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -52,11 +52,11 @@ export const Route = createFileRoute("/play/$marketId")({
       { name: "description", content: "Choose your number and place bets with points." },
     ],
   }),
-  errorComponent: ({ error }) => (
+  errorComponent: ({ error }: { error?: any }) => (
     <main className="mx-auto max-w-lg p-8 text-center space-y-3">
       <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
       <h2 className="text-xl font-bold text-foreground">Could not load market</h2>
-      <p className="text-xs text-muted-foreground">{error?.message || "An unexpected error occurred while loading this market."}</p>
+      <p className="text-xs text-muted-foreground">{(error as any)?.message || "An unexpected error occurred while loading this market."}</p>
       <div className="pt-2 flex justify-center gap-2">
         <Button onClick={() => window.location.reload()} variant="default" size="sm">
           Retry

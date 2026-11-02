@@ -265,7 +265,7 @@ export function TraditionalKhataModal({
         let binary = "";
         const len = bytes.byteLength;
         for (let i = 0; i < len; i++) {
-          binary += String.fromCharCode(bytes[i]);
+          binary += String.fromCharCode(bytes[i] ?? 0);
         }
         const b64 = window.btoa(binary);
 
