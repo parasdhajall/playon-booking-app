@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#144633" />
+      <stop offset="100%" stop-color="#0a1f17" />
+    </radialGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="50%" stop-color="#eab308" />
+      <stop offset="100%" stop-color="#ca8a04" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="104" fill="url(#bgGlow)" />
+  <circle cx="256" cy="256" r="216" fill="none" stroke="url(#goldGrad)" stroke-width="6" opacity="0.4" />
+  <circle cx="256" cy="256" r="204" fill="#0f2e22" stroke="url(#goldGrad)" stroke-width="3" opacity="0.8" />
+
+  <!-- PLAYON Stylized Logo Symbol -->
+  <g filter="url(#shadow)">
+    <!-- Letter P Stylized -->
+    <path d="M 180 120 L 290 120 C 350 120 380 155 380 210 C 380 265 350 300 290 300 L 235 300 L 235 392 C 235 400 228 406 220 406 L 195 406 C 187 406 180 400 180 392 Z M 235 170 L 235 250 L 285 250 C 315 250 330 235 330 210 C 330 185 315 170 285 170 Z" fill="url(#goldGrad)" />
+    <!-- Small Golden Play Triangle accent -->
+    <polygon points="260,195 260,225 285,210" fill="#0f2e22" />
+  </g>
+
+  <!-- Subtitle Text -->
+  <text x="256" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" letter-spacing="8" fill="url(#goldGrad)" text-anchor="middle">PLAYON</text>
+</svg>

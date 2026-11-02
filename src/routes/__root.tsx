@@ -82,8 +82,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" },
       { name: "theme-color", content: "#0f2e22" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "PlayOn" },
+      { name: "application-name", content: "PlayOn" },
       { name: "format-detection", content: "telephone=no" },
       { title: "PlayOn" },
       { name: "description", content: "PlayOn — Fast Online Matka & Number Markets." },
@@ -91,8 +94,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
     ],
     links: [
-      { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
+      { rel: "icon", href: "/icon.svg", type: "image/svg+xml" },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap" },
     ],
@@ -122,6 +128,23 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    // Register PWA Service Worker in production for instant load & offline resilience
+    if (typeof window !== "undefined" && "serviceWorker" in navigator && !import.meta.env.DEV) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js", { scope: "/" })
+          .then((reg) => {
+            // Periodically check for updates
+            setInterval(() => {
+              reg.update().catch(() => {});
+            }, 1000 * 60 * 30);
+          })
+          .catch((err) => {
+            console.warn("[PWA] Service worker registration error:", err);
+          });
+      });
+    }
+
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
