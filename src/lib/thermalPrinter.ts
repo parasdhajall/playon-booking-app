@@ -289,7 +289,9 @@ class BluetoothPrinterManager {
         if (bridge.connect) {
           try {
             bridge.connect(target.address);
-          } catch (ignored) {}
+          } catch (_ignored) {
+            // bridge connect failure caught
+          }
         }
 
         this.notify();
@@ -439,7 +441,9 @@ class BluetoothPrinterManager {
       if (bridge && bridge.disconnect) {
         try {
           bridge.disconnect();
-        } catch (ignored) {}
+        } catch (_ignored) {
+          // bridge disconnect failure caught
+        }
       }
     }
     if (this.device && this.device.gatt && this.device.gatt.connected) {

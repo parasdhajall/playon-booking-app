@@ -82,6 +82,7 @@ export function TraditionalKhataModal({
   const [manualMagilOverrides, setManualMagilOverrides] = useState<Record<string, number>>({});
   const [copied, setCopied] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const { isConnected: isPrinterConnected, deviceName } = usePrinter();
 
@@ -116,8 +117,6 @@ export function TraditionalKhataModal({
     setIsEditingMagil(false);
     toast.success(`मागील नावे ₹${val} अपडेट केले!`);
   };
-
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   // 1-Click WhatsApp Photo Share (Exact visual slip image)
   const handleShareImage = async () => {

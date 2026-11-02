@@ -95,7 +95,9 @@ export function getSavedMagilNave(agentId: string, dateStr: string, shift: Shift
       const parsed = Number(raw);
       if (!isNaN(parsed)) return parsed;
     }
-  } catch {}
+  } catch (_e) {
+    // ignore localStorage errors in private browsing
+  }
   return null;
 }
 
@@ -103,7 +105,9 @@ export function saveMagilNave(agentId: string, dateStr: string, shift: ShiftType
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(`playon_khata_magil_${agentId}_${dateStr}_${shift}`, amount.toString());
-  } catch {}
+  } catch (_e) {
+    // ignore localStorage errors in private browsing
+  }
 }
 
 // Core Engine: Build Traditional Khata Data from agent bets & markets
