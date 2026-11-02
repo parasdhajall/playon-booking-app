@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -44,6 +44,80 @@ import {
   findFamilyByJodi,
   type JodiFamily,
 } from "@/lib/jodiFamilyData";
+
+// Memoized Row for Panna Amount Inputs to ensure zero-lag typing on mobile
+const PannaRowItem = memo(function PannaRowItem({
+  panna,
+  points,
+  onPointsChange,
+  onRemove,
+}: {
+  panna: string;
+  points: number | undefined;
+  onPointsChange: (panna: string, val: number) => void;
+  onRemove: (panna: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex h-11 w-14 shrink-0 items-center justify-center rounded-xl bg-secondary font-mono text-base font-bold text-foreground border">
+        {panna}
+      </div>
+      <Input
+        type="number"
+        min={5}
+        step={5}
+        placeholder="₹ Amount"
+        value={points || ""}
+        onChange={(e) => onPointsChange(panna, Number(e.target.value) || 0)}
+        className="h-11 flex-1 font-semibold text-base sm:text-sm bg-secondary/40"
+      />
+      <button
+        type="button"
+        onClick={() => onRemove(panna)}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-95 transition-all"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+});
+
+// Memoized Row for Jodi Amount Inputs
+const JodiRowItem = memo(function JodiRowItem({
+  jodi,
+  points,
+  onPointsChange,
+  onRemove,
+}: {
+  jodi: string;
+  points: number | undefined;
+  onPointsChange: (jodi: string, val: number) => void;
+  onRemove: (jodi: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex h-11 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary font-mono text-base font-bold text-foreground border">
+        {jodi}
+      </div>
+      <Input
+        type="number"
+        min={5}
+        step={5}
+        placeholder="₹ Amount"
+        value={points || ""}
+        onChange={(e) => onPointsChange(jodi, Number(e.target.value) || 0)}
+        className="h-11 flex-1 font-semibold text-base sm:text-sm bg-secondary/40"
+      />
+      <button
+        type="button"
+        onClick={() => onRemove(jodi)}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-95 transition-all"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+});
 
 export const Route = createFileRoute("/play/$marketId")({
   head: () => ({
@@ -140,7 +214,19 @@ function PlayPage() {
   const { data: m } = useQuery({
     queryKey: ["market", marketId],
     queryFn: async () => (await supabase.from("markets").select("*").eq("id", marketId).single()).data,
+    staleTime: 30000,
   });
+
+  const selectedPannasSet = useMemo(() => new Set(selectedPannas), [selectedPannas]);
+  const selectedJodisSet = useMemo(() => new Set(selectedJodis), [selectedJodis]);
+
+  const handlePannaPointsChange = useCallback((panna: string, val: number) => {
+    setPannaPoints((pts) => ({ ...pts, [panna]: val }));
+  }, []);
+
+  const handleJodiPointsChange = useCallback((jodi: string, val: number) => {
+    setJodiPoints((pts) => ({ ...pts, [jodi]: val }));
+  }, []);
 
   const todayIST = new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
@@ -1208,7 +1294,7 @@ function PlayPage() {
 
               if (pannas.length === 0) return null;
 
-              const allRowSelected = pannas.length > 0 && pannas.every((p) => selectedPannas.includes(p));
+              const allRowSelected = pannas.length > 0 && pannas.every((p) => selectedPannasSet.has(p));
 
               return (
                 <div
@@ -1220,7 +1306,7 @@ function PlayPage() {
                     type="button"
                     title={`Select/Deselect all for Ank ${ank}`}
                     onClick={() => toggleAnkPannas(pannas)}
-                    className={`flex flex-col h-11 w-10 shrink-0 items-center justify-center rounded-lg font-display transition-all border ${
+                    className={`flex flex-col h-11 w-10 shrink-0 items-center justify-center rounded-lg font-display transition-all border active:scale-95 touch-manipulation ${
                       allRowSelected
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
                         : "bg-secondary text-foreground hover:border-primary/60 border-border"
@@ -1235,13 +1321,13 @@ function PlayPage() {
                   {/* Panna Pills Grid */}
                   <div className="flex flex-wrap gap-1.5 flex-1">
                     {pannas.map((p) => {
-                      const isSel = selectedPannas.includes(p);
+                      const isSel = selectedPannasSet.has(p);
                       return (
                         <button
                           key={p}
                           type="button"
                           onClick={() => togglePanna(p)}
-                          className={`rounded-lg px-2.5 py-1.5 font-mono text-xs font-bold tracking-wider transition-all ${
+                          className={`rounded-lg px-2.5 py-1.5 font-mono text-xs font-bold tracking-wider transition-all active:scale-95 touch-manipulation ${
                             isSel
                               ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary scale-105"
                               : "bg-card border border-border/70 text-foreground hover:border-primary hover:bg-secondary/80"
@@ -1270,7 +1356,7 @@ function PlayPage() {
 
               if (pannas.length === 0) return null;
 
-              const allRowSelected = pannas.length > 0 && pannas.every((p) => selectedPannas.includes(p));
+              const allRowSelected = pannas.length > 0 && pannas.every((p) => selectedPannasSet.has(p));
 
               return (
                 <div
@@ -1282,7 +1368,7 @@ function PlayPage() {
                     type="button"
                     title={`Select/Deselect all for Ank ${ank}`}
                     onClick={() => toggleAnkPannas(pannas)}
-                    className={`flex flex-col h-11 w-10 shrink-0 items-center justify-center rounded-lg font-display transition-all border ${
+                    className={`flex flex-col h-11 w-10 shrink-0 items-center justify-center rounded-lg font-display transition-all border active:scale-95 touch-manipulation ${
                       allRowSelected
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
                         : "bg-secondary text-foreground hover:border-primary/60 border-border"
@@ -1297,13 +1383,13 @@ function PlayPage() {
                   {/* Panna Pills Grid */}
                   <div className="flex flex-wrap gap-1.5 flex-1">
                     {pannas.map((p) => {
-                      const isSel = selectedPannas.includes(p);
+                      const isSel = selectedPannasSet.has(p);
                       return (
                         <button
                           key={p}
                           type="button"
                           onClick={() => togglePanna(p)}
-                          className={`rounded-lg px-2.5 py-1.5 font-mono text-xs font-bold tracking-wider transition-all ${
+                          className={`rounded-lg px-2.5 py-1.5 font-mono text-xs font-bold tracking-wider transition-all active:scale-95 touch-manipulation ${
                             isSel
                               ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary scale-105"
                               : "bg-card border border-border/70 text-foreground hover:border-primary hover:bg-secondary/80"
@@ -1339,13 +1425,13 @@ function PlayPage() {
                 }
 
                 return filtered.map((p) => {
-                  const isSel = selectedPannas.includes(p);
+                  const isSel = selectedPannasSet.has(p);
                   return (
                     <button
                       key={p}
                       type="button"
                       onClick={() => togglePanna(p)}
-                      className={`rounded-xl py-3 font-mono text-sm font-bold tracking-widest transition-all ${
+                      className={`rounded-xl py-3 font-mono text-sm font-bold tracking-widest transition-all active:scale-95 touch-manipulation ${
                         isSel
                           ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary scale-105"
                           : "bg-card border border-border/80 text-foreground hover:border-primary hover:bg-secondary"
@@ -1383,37 +1469,13 @@ function PlayPage() {
 
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {selectedPannas.map((panna) => (
-                <div key={panna} className="flex items-center gap-2">
-                  {/* Panna Badge */}
-                  <div className="flex h-11 w-14 shrink-0 items-center justify-center rounded-xl bg-secondary font-mono text-base font-bold text-foreground border">
-                    {panna}
-                  </div>
-
-                  {/* Amount Input */}
-                  <Input
-                    type="number"
-                    min={5}
-                    step={5}
-                    placeholder="₹ Amount"
-                    value={pannaPoints[panna] || ""}
-                    onChange={(e) =>
-                      setPannaPoints((pts) => ({
-                        ...pts,
-                        [panna]: Number(e.target.value) || 0,
-                      }))
-                    }
-                    className="h-11 flex-1 font-semibold text-sm bg-secondary/40"
-                  />
-
-                  {/* Red Delete Button */}
-                  <button
-                    type="button"
-                    onClick={() => removePanna(panna)}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
+                <PannaRowItem
+                  key={panna}
+                  panna={panna}
+                  points={pannaPoints[panna]}
+                  onPointsChange={handlePannaPointsChange}
+                  onRemove={removePanna}
+                />
               ))}
             </div>
           </div>
@@ -1731,13 +1793,13 @@ function PlayPage() {
               {/* 100 Jodis 10x10 Grid (00 to 99) */}
               <div className="grid grid-cols-10 gap-1 sm:gap-1.5">
                 {Array.from({ length: 100 }, (_, i) => String(i).padStart(2, "0")).map((jodi) => {
-                  const isSel = selectedJodis.includes(jodi);
+                  const isSel = selectedJodisSet.has(jodi);
                   return (
                     <button
                       key={jodi}
                       type="button"
                       onClick={() => toggleJodi(jodi)}
-                      className={`aspect-square rounded-md text-[11px] sm:text-xs font-mono font-bold transition-all ${
+                      className={`aspect-square rounded-md text-[11px] sm:text-xs font-mono font-bold transition-all active:scale-95 touch-manipulation ${
                         isSel
                           ? "bg-foreground text-background shadow-md ring-2 ring-primary scale-105"
                           : "bg-secondary/70 text-foreground hover:bg-secondary border border-border/50"
@@ -1773,37 +1835,13 @@ function PlayPage() {
 
                 <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                   {selectedJodis.map((jodi) => (
-                    <div key={jodi} className="flex items-center gap-2">
-                      {/* Jodi Badge */}
-                      <div className="flex h-11 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary font-mono text-base font-bold text-foreground border">
-                        {jodi}
-                      </div>
-
-                      {/* Amount Input */}
-                      <Input
-                        type="number"
-                        min={5}
-                        step={5}
-                        placeholder="₹ Amount"
-                        value={jodiPoints[jodi] || ""}
-                        onChange={(e) =>
-                          setJodiPoints((pts) => ({
-                            ...pts,
-                            [jodi]: Number(e.target.value) || 0,
-                          }))
-                        }
-                        className="h-11 flex-1 font-semibold text-sm bg-secondary/40"
-                      />
-
-                      {/* Red Delete Button */}
-                      <button
-                        type="button"
-                        onClick={() => removeJodi(jodi)}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
+                    <JodiRowItem
+                      key={jodi}
+                      jodi={jodi}
+                      points={jodiPoints[jodi]}
+                      onPointsChange={handleJodiPointsChange}
+                      onRemove={removeJodi}
+                    />
                   ))}
                 </div>
               </div>
@@ -2039,14 +2077,14 @@ function PlayPage() {
       </div>
 
       {/* STICKY BOTTOM ACTION BAR */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 backdrop-blur-md px-4 py-3 shadow-2xl">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/98 px-3.5 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl">
         <div className="mx-auto max-w-xl space-y-2">
           {/* Floating Bucket Alert Banner (when bucket has queued plays) */}
           {bucket.length > 0 && (
             <button
               type="button"
               onClick={() => setIsBucketOpen(true)}
-              className="w-full flex items-center justify-between rounded-xl bg-gold/15 border border-gold/40 px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-gold/25 transition-all shadow-md backdrop-blur-sm"
+              className="w-full flex items-center justify-between rounded-xl bg-card border border-gold/40 px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-gold/15 active:scale-[0.99] transition-all shadow-md"
             >
               <div className="flex items-center gap-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-slate-950 font-black text-[11px]">

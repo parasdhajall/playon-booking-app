@@ -61,13 +61,28 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * { 
+    border-color: var(--color-border);
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
   body {
     background: var(--gradient-felt);
-    background-attachment: fixed;
+    background-color: oklch(0.17 0.03 160);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     min-height: 100vh;
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  button, a, input, select {
+    touch-action: manipulation;
   }
 }
 

@@ -26,6 +26,7 @@ export function useProfile(userId?: string) {
   return useQuery({
     queryKey: ["profile", userId],
     enabled: !!userId,
+    staleTime: 60000,
     queryFn: async () => {
       const [{ data: profile }, { data: roles }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", userId!).single(),
@@ -40,7 +41,8 @@ export function useTodayExpense(userId?: string) {
   return useQuery({
     queryKey: ["today-expense", userId],
     enabled: !!userId,
-    refetchInterval: 10000,
+    staleTime: 15000,
+    refetchInterval: 30000,
     queryFn: async () => {
       const now = new Date();
       const istDateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(now);
