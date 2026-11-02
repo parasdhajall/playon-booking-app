@@ -28,6 +28,7 @@ export function ThermalReceiptModal({
   onOpenChange,
   receiptData,
 }: ThermalReceiptModalProps) {
+  const isPrintingRef = useRef(false);
   const [printing, setPrinting] = useState(false);
   const { isConnected, deviceName } = usePrinter();
   const [playerName, setPlayerName] = useState(receiptData?.playerName || "Player");
@@ -48,8 +49,6 @@ export function ThermalReceiptModal({
       localStorage.setItem("preferred_player_name", val.trim());
     }
   };
-
-  const isPrintingRef = useRef(false);
 
   const handleBluetoothPrint = async () => {
     if (isPrintingRef.current || printing) {

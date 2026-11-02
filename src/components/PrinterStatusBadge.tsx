@@ -1,6 +1,6 @@
-import { Printer, Check, Wifi, WifiOff, Loader2 } from "lucide-react";
+import { Printer } from "lucide-react";
 import { toast } from "sonner";
-import { usePrinter, printerManager } from "@/lib/thermalPrinter";
+import { usePrinter, isAndroidNativeApp } from "@/lib/thermalPrinter";
 
 interface PrinterStatusBadgeProps {
   className?: string;
@@ -12,18 +12,26 @@ export function PrinterStatusBadge({
   showTextOnMobile = false,
 }: PrinterStatusBadgeProps) {
   const { status, deviceName, isConnected, isConnecting, connect, disconnect } = usePrinter();
+  const isAndroid = isAndroidNativeApp();
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isConnected) {
-      if (confirm(`Printer is connected to "${deviceName}". Do you want to disconnect?`)) {
+
+    // If already paired / connected, clicking lets user change or disconnect
+    if (isConnected || (isAndroid && deviceName)) {
+      const activeName = deviceName || "Printer";
+      if (
+        confirm(
+          `Printer "${activeName}" is currently selected.\n\nDo you want to disconnect or change printer?`
+        )
+      ) {
         disconnect();
-        toast.info("Printer disconnected");
+        toast.info("Printer disconnected. Tap again to select a printer.");
       }
       return;
     }
 
-    toast.info(`Connecting to ${deviceName || "Bluetooth printer"}...`);
+    toast.info("Searching paired Bluetooth printers...");
     const res = await connect();
     if (res.success) {
       toast.success(res.message);
@@ -32,39 +40,45 @@ export function PrinterStatusBadge({
     }
   };
 
+  // Status visual state
+  const isPairedOnAndroid = isAndroid && !!deviceName;
+  const showActive = isConnected;
+
   return (
     <button
       type="button"
       onClick={handleToggle}
       className={`group relative flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer border ${
-        isConnected
-          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 shadow-xs"
+        showActive
+          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 shadow-xs"
           : isConnecting
             ? "border-amber-500/50 bg-amber-500/10 text-amber-500 animate-pulse"
-            : deviceName
-              ? "border-red-500/40 bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/20"
-              : "border-red-500/40 bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/20"
+            : isPairedOnAndroid
+              ? "border-sky-500/40 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20"
+              : "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20"
       } ${className}`}
       title={
-        isConnected
+        showActive
           ? `Printer Connected: ${deviceName}. Tap to disconnect.`
-          : deviceName
-            ? `Printer ${deviceName} is OFF / Disconnected. Tap to connect.`
+          : isPairedOnAndroid
+            ? `Paired Printer: ${deviceName}. Make sure printer is ON before printing.`
             : "Printer Disconnected. Tap to pair Bluetooth printer."
       }
     >
       {/* Status Dot */}
       <span className="relative flex h-2 w-2">
-        {isConnected && (
+        {showActive && (
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
         )}
         <span
           className={`relative inline-flex h-2 w-2 rounded-full ${
-            isConnected
+            showActive
               ? "bg-emerald-500"
               : isConnecting
                 ? "bg-amber-500"
-                : "bg-red-500"
+                : isPairedOnAndroid
+                  ? "bg-sky-400"
+                  : "bg-red-500"
           }`}
         ></span>
       </span>
@@ -73,12 +87,12 @@ export function PrinterStatusBadge({
 
       {/* Label */}
       <span className={showTextOnMobile ? "inline" : "hidden sm:inline"}>
-        {isConnected
+        {showActive
           ? `Printer: ${deviceName || "Connected"}`
           : isConnecting
             ? "Connecting…"
-            : deviceName
-              ? `Printer: ${deviceName} (OFF)`
+            : isPairedOnAndroid
+              ? `Printer: ${deviceName}`
               : "Connect Printer"}
       </span>
     </button>
