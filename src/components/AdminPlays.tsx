@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { gameLabel, fmtIST } from "@/lib/matka";
+import { gameLabel, fmtIST, toISTDateString } from "@/lib/matka";
 
 type Market = { id: string; name: string };
 
@@ -85,7 +85,7 @@ export function AdminPlays({ markets }: { markets: Market[] }) {
     if (!data) return [];
     if (dateFilter === "all") return data;
     return data.filter((b) => {
-      const bDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(b.created_at));
+      const bDate = toISTDateString(b.created_at);
       return bDate === selectedTargetDate;
     });
   }, [data, dateFilter, selectedTargetDate]);

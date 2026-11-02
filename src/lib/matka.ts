@@ -42,7 +42,28 @@ export const fmtTime = (t?: string | null) => {
 const istDateTime = new Intl.DateTimeFormat("en-IN", {
   timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "numeric", minute: "2-digit", hour12: true,
 });
-export const fmtIST = (iso: string) => istDateTime.format(new Date(iso));
+export const fmtIST = (iso?: string | null): string => {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return istDateTime.format(d);
+  } catch {
+    return "—";
+  }
+};
+
+const istDateOnly = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+export const toISTDateString = (isoOrDate?: string | Date | null): string => {
+  if (!isoOrDate) return "";
+  try {
+    const d = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
+    if (isNaN(d.getTime())) return "";
+    return istDateOnly.format(d);
+  } catch {
+    return "";
+  }
+};
 
 // Markets auto open and close on their own times, in IST (India time).
 export const istHHMM = () => {

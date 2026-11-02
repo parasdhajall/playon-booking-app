@@ -39,7 +39,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProfile } from "@/hooks/useAuth";
 import { marketsQuery } from "./index";
-import { resultLabel, fmtTime, marketStatus, fmtIST, gameLabel, canMarketDeclareOpen, canMarketDeclareClose, isMarketOpenForAdmin, sortMarketsForAdmin, isMarketScheduledToday } from "@/lib/matka";
+import { resultLabel, fmtTime, marketStatus, fmtIST, toISTDateString, gameLabel, canMarketDeclareOpen, canMarketDeclareClose, isMarketOpenForAdmin, sortMarketsForAdmin, isMarketScheduledToday } from "@/lib/matka";
 import { AdminPlays } from "@/components/AdminPlays";
 import { AdminRiskHedging } from "@/components/AdminRiskHedging";
 import { AdminCommission } from "@/components/AdminCommission";
@@ -202,7 +202,7 @@ function Admin() {
 
       for (const b of data ?? []) {
         if (b.status !== "refunded") {
-          const bDateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(b.created_at));
+          const bDateStr = toISTDateString(b.created_at);
           if (bDateStr === todayDateStr) {
             todayMap[b.user_id] = (todayMap[b.user_id] || 0) + (b.points || 0);
           } else if (bDateStr === yesterdayDateStr) {

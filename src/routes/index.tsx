@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Clock, Play, History, Calendar, Lock } from "lucide-react";
+import { Clock, Play, History, Calendar, Lock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtTime, resultLabel, marketStatus, canMarketDeclareOpen, isMarketOpen, isMarketScheduledToday } from "@/lib/matka";
@@ -18,6 +18,18 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  errorComponent: ({ error }) => (
+    <main className="mx-auto max-w-lg p-8 text-center space-y-3">
+      <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
+      <h2 className="text-xl font-bold text-foreground">Could not load markets</h2>
+      <p className="text-xs text-muted-foreground">{error?.message || "An unexpected error occurred while loading markets."}</p>
+      <div className="pt-2 flex justify-center">
+        <Button onClick={() => window.location.reload()} variant="default" size="sm">
+          Retry
+        </Button>
+      </div>
+    </main>
+  ),
   component: Index,
 });
 

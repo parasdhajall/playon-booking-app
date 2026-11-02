@@ -52,6 +52,21 @@ export const Route = createFileRoute("/play/$marketId")({
       { name: "description", content: "Choose your number and place bets with points." },
     ],
   }),
+  errorComponent: ({ error }) => (
+    <main className="mx-auto max-w-lg p-8 text-center space-y-3">
+      <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
+      <h2 className="text-xl font-bold text-foreground">Could not load market</h2>
+      <p className="text-xs text-muted-foreground">{error?.message || "An unexpected error occurred while loading this market."}</p>
+      <div className="pt-2 flex justify-center gap-2">
+        <Button onClick={() => window.location.reload()} variant="default" size="sm">
+          Retry
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/">Back to Markets</Link>
+        </Button>
+      </div>
+    </main>
+  ),
   component: PlayPage,
 });
 
@@ -590,6 +605,7 @@ function PlayPage() {
 
   // Confirm and Place All Bucket Bets
   const handleConfirmBucket = async () => {
+    if (busy) return;
     if (!user) {
       toast.error("Please sign in to place plays");
       navigate({ to: "/auth" });
@@ -779,7 +795,19 @@ function PlayPage() {
     }
   };
 
-  if (!m) return <main className="mx-auto max-w-lg p-8 text-center text-muted-foreground">Loading…</main>;
+  if (!m) {
+    return (
+      <main className="mx-auto max-w-lg p-12 text-center text-muted-foreground space-y-3">
+        <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
+        <p className="text-sm">Loading market details…</p>
+        <div className="pt-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/">Back to Markets</Link>
+          </Button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-xl pb-36 pt-2 px-3">
