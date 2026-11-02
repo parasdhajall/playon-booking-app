@@ -45,6 +45,43 @@ import {
   type JodiFamily,
 } from "@/lib/jodiFamilyData";
 
+// Memoized Row for Single Digit (Ank) Amount Inputs
+const AnkRowItem = memo(function AnkRowItem({
+  ank,
+  points,
+  onPointsChange,
+  onRemove,
+}: {
+  ank: number;
+  points: number | undefined;
+  onPointsChange: (ank: number, val: number) => void;
+  onRemove: (ank: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex h-11 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary font-mono text-base font-bold text-foreground border">
+        {ank}
+      </div>
+      <Input
+        type="number"
+        min={5}
+        step={5}
+        placeholder="₹ Amount"
+        value={points || ""}
+        onChange={(e) => onPointsChange(ank, Number(e.target.value) || 0)}
+        className="h-11 flex-1 font-semibold text-base sm:text-sm bg-secondary/40"
+      />
+      <button
+        type="button"
+        onClick={() => onRemove(ank)}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-95 transition-all"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+});
+
 // Memoized Row for Panna Amount Inputs to ensure zero-lag typing on mobile
 const PannaRowItem = memo(function PannaRowItem({
   panna,
@@ -192,6 +229,7 @@ function PlayPage() {
   const [pannaSearch, setPannaSearch] = useState<string>("");
 
   // Ank Bulk state (digits 0 to 9)
+  const [selectedAnks, setSelectedAnks] = useState<number[]>([]);
   const [ankPoints, setAnkPoints] = useState<Record<number, number>>({});
 
   // Manual input state for Sangam
@@ -220,6 +258,7 @@ function PlayPage() {
 
   const selectedPannasSet = useMemo(() => new Set(selectedPannas), [selectedPannas]);
   const selectedJodisSet = useMemo(() => new Set(selectedJodis), [selectedJodis]);
+  const selectedAnksSet = useMemo(() => new Set(selectedAnks), [selectedAnks]);
 
   const handlePannaPointsChange = useCallback((panna: string, val: number) => {
     setPannaPoints((pts) => ({ ...pts, [panna]: val }));
@@ -227,6 +266,10 @@ function PlayPage() {
 
   const handleJodiPointsChange = useCallback((jodi: string, val: number) => {
     setJodiPoints((pts) => ({ ...pts, [jodi]: val }));
+  }, []);
+
+  const handleAnkPointsChange = useCallback((ank: number, val: number) => {
+    setAnkPoints((pts) => ({ ...pts, [ank]: val }));
   }, []);
 
   const todayIST = new Intl.DateTimeFormat("en-IN", {
@@ -261,6 +304,7 @@ function PlayPage() {
     setPannaSearch("");
     setSelectedJodis([]);
     setJodiPoints({});
+    setSelectedAnks([]);
     setAnkPoints({});
     setSangamPart1("");
     setSangamPart2("");
@@ -392,28 +436,61 @@ function PlayPage() {
 
   const totalJodiPoints = selectedJodis.reduce((sum, j) => sum + (jodiPoints[j] || 5), 0);
 
-  // Ank Bulk helpers
-  const setAnkPoint = (digit: number, pts: number) => {
-    setAnkPoints((prev) => ({ ...prev, [digit]: pts }));
+  // Ank Bulk helpers (Single Digit)
+  const toggleAnk = (digit: number) => {
+    setSelectedAnks((prev) => {
+      if (prev.includes(digit)) {
+        const next = prev.filter((x) => x !== digit);
+        setAnkPoints((pts) => {
+          const copy = { ...pts };
+          delete copy[digit];
+          return copy;
+        });
+        return next;
+      } else {
+        setAnkPoints((pts) => ({
+          ...pts,
+          [digit]: pts[digit] || (numPoints >= 5 ? numPoints : 0),
+        }));
+        return [...prev, digit];
+      }
+    });
   };
 
-  const fillAllAnkPoints = (pts: number) => {
+  const removeAnk = (digit: number) => {
+    setSelectedAnks((prev) => prev.filter((x) => x !== digit));
+    setAnkPoints((pts) => {
+      const copy = { ...pts };
+      delete copy[digit];
+      return copy;
+    });
+  };
+
+  const setAllAnkPoints = (pts: number) => {
+    setPoints(pts);
     const updated: Record<number, number> = {};
-    for (let d = 0; d <= 9; d++) {
+    for (const d of selectedAnks) {
       updated[d] = pts;
     }
     setAnkPoints(updated);
   };
 
-  const clearAllAnkPoints = () => {
-    setAnkPoints({});
+  const selectAllAnks = () => {
+    if (selectedAnks.length === 10) {
+      setSelectedAnks([]);
+      setAnkPoints({});
+    } else {
+      const all = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+      setSelectedAnks(all);
+      const updated: Record<number, number> = {};
+      for (const d of all) {
+        updated[d] = ankPoints[d] || (numPoints >= 5 ? numPoints : 0);
+      }
+      setAnkPoints(updated);
+    }
   };
 
-  const activeAnkEntries = Object.entries(ankPoints)
-    .filter(([_, pts]) => typeof pts === "number" && pts >= 5)
-    .map(([d, pts]) => ({ number: d, points: pts }));
-
-  const totalAnkPoints = activeAnkEntries.reduce((sum, e) => sum + e.points, 0);
+  const totalAnkPoints = selectedAnks.reduce((sum, d) => sum + (ankPoints[d] || 0), 0);
 
   const winMultiplier = g.rate;
   const potentialWin = numPoints * winMultiplier;
@@ -623,7 +700,7 @@ function PlayPage() {
     return ok;
   };
 
-  // Add Ank Bulk to Bucket
+  // Add Ank Bulk to Bucket (Single Digit)
   const handleAddAnkBulkToBucket = (): boolean => {
     if (marketClosed) {
       toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
@@ -633,21 +710,28 @@ function PlayPage() {
       toast.error(`Open session has closed for ${m?.name} (${fmtTime(m?.open_time || "")}).`);
       return false;
     }
-    if (activeAnkEntries.length === 0) {
-      toast.error("Please enter at least ₹5 for one digit");
+    if (selectedAnks.length === 0) {
+      toast.error("Please select at least one Digit");
       return false;
     }
 
-    const bets = activeAnkEntries.map((e) => ({
+    const bets = selectedAnks.map((d) => ({
       game: "single" as GameType,
       gameLabel: "Single Digit",
       session: effSession,
-      number: e.number,
-      points: e.points,
+      number: String(d),
+      points: ankPoints[d] || (numPoints >= 5 ? numPoints : 0),
     }));
+
+    const anyInvalid = bets.some((b) => !b.points || b.points < 5);
+    if (anyInvalid) {
+      toast.error("Minimum bet per Digit is ₹5. Please enter ₹5 or more.");
+      return false;
+    }
 
     const ok = addToBucket(bets);
     if (ok) {
+      setSelectedAnks([]);
       setAnkPoints({});
     }
     return ok;
@@ -962,13 +1046,13 @@ function PlayPage() {
     }
 
     if (game === "ank_bulk") {
-      if (activeAnkEntries.length > 0) {
+      if (selectedAnks.length > 0) {
         const ok = handleAddAnkBulkToBucket();
         if (ok) setIsBucketOpen(true);
       } else if (bucket.length > 0) {
         setIsBucketOpen(true);
       } else {
-        toast.error("Please enter at least ₹5 for one digit");
+        toast.error("Please select at least one Digit");
       }
       return;
     }
@@ -1734,55 +1818,83 @@ function PlayPage() {
           </div>
         )}
 
-        {/* 6. ANK BULK VIEW (Matches Screenshot 2) */}
+        {/* 6. ANK BULK VIEW (Single Digit - Matches Jodi & Panna Bulk) */}
         {game === "ank_bulk" && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">Enter Amount (₹) Per Digit</h3>
-              {/* Quick toolbar */}
-              <div className="flex items-center gap-1">
-                {[5, 10, 20, 50, 100].map((amt) => (
+          <div className="space-y-4">
+            {/* Select Digits Card */}
+            <div className="rounded-2xl border bg-card p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-foreground">Select Single Digits</h3>
+                <div className="flex items-center gap-2">
                   <button
-                    key={amt}
                     type="button"
-                    onClick={() => fillAllAnkPoints(amt)}
-                    className="rounded border bg-secondary px-2 py-0.5 text-[10px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
+                    onClick={selectAllAnks}
+                    className="text-xs text-primary hover:underline font-semibold"
                   >
-                    +₹{amt} All
+                    {selectedAnks.length === 10 ? "Clear All" : "Select All"}
                   </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={clearAllAnkPoints}
-                  className="rounded border bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground hover:text-destructive"
-                >
-                  Clear
-                </button>
+                  <span className="rounded-lg bg-foreground px-2.5 py-1 text-xs font-bold text-background shadow">
+                    {selectedAnks.length} selected
+                  </span>
+                </div>
+              </div>
+
+              {/* 10 Digits Grid (1 to 9, 0) */}
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                {ANK_LIST.map((digit) => {
+                  const isSel = selectedAnksSet.has(digit);
+                  return (
+                    <button
+                      key={digit}
+                      type="button"
+                      onClick={() => toggleAnk(digit)}
+                      className={`h-12 rounded-xl text-lg font-mono font-bold transition-all active:scale-95 touch-manipulation flex items-center justify-center ${
+                        isSel
+                          ? "bg-foreground text-background shadow-md ring-2 ring-primary scale-105"
+                          : "bg-secondary/70 text-foreground hover:bg-secondary border border-border/50"
+                      }`}
+                    >
+                      {digit}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* 10 Digit Rows: 0 to 9 (as shown in screenshot 2) */}
-            <div className="space-y-2">
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
-                <div key={digit} className="flex items-center gap-2">
-                  {/* Digit Badge */}
-                  <div className="flex h-11 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary font-display text-lg font-bold text-foreground border">
-                    {digit}
+            {/* Points Per Digit Section (Matches Screenshot 2) */}
+            {selectedAnks.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-foreground">Points Per Digit</h4>
+                  {/* Quick presets to apply to all selected */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground mr-0.5">All:</span>
+                    {[5, 10, 20, 50, 100].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setAllAnkPoints(amt)}
+                        className="rounded border bg-secondary px-1.5 py-0.5 text-[10px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
+                      >
+                        ₹{amt}
+                      </button>
+                    ))}
                   </div>
-
-                  {/* Amount Input */}
-                  <Input
-                    type="number"
-                    min={5}
-                    step={5}
-                    placeholder="₹ Amount"
-                    value={ankPoints[digit] || ""}
-                    onChange={(e) => setAnkPoint(digit, Number(e.target.value) || 0)}
-                    className="h-11 flex-1 font-semibold text-sm bg-secondary/40"
-                  />
                 </div>
-              ))}
-            </div>
+
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {selectedAnks.map((digit) => (
+                    <AnkRowItem
+                      key={digit}
+                      ank={digit}
+                      points={ankPoints[digit]}
+                      onPointsChange={handleAnkPointsChange}
+                      onRemove={removeAnk}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -2267,12 +2379,12 @@ function PlayPage() {
               )}
             </div>
           ) : game === "ank_bulk" ? (
-            /* B. ANK BULK BOTTOM BAR */
+            /* B. ANK BULK BOTTOM BAR (Single Digit) */
             <div className="space-y-2">
-              {activeAnkEntries.length > 0 && (
+              {selectedAnks.length > 0 && (
                 <div className="flex items-center justify-between text-xs px-1">
                   <span className="text-muted-foreground">
-                    Playing: <strong className="text-foreground">{activeAnkEntries.length} Digits</strong> ({effSession.toUpperCase()})
+                    Selected: <strong className="text-foreground">{selectedAnks.length} Digits</strong> ({effSession.toUpperCase()})
                   </span>
                   <span className="font-semibold text-gold">
                     Total: <strong>₹{totalAnkPoints}</strong> (Win Pays 9×)
@@ -2288,10 +2400,10 @@ function PlayPage() {
                 <Button disabled className="w-full h-11 text-sm font-semibold rounded-xl bg-muted text-muted-foreground">
                   Open Session Closed
                 </Button>
-              ) : activeAnkEntries.length === 0 ? (
+              ) : selectedAnks.length === 0 ? (
                 <div className="flex gap-2">
                   <Button disabled className="flex-1 h-11 text-xs font-semibold rounded-xl bg-muted text-muted-foreground">
-                    Enter amount (₹) to place bets
+                    Select digits to place plays
                   </Button>
                   {bucket.length > 0 && (
                     <Button
@@ -2310,14 +2422,14 @@ function PlayPage() {
                     onClick={handleAddAnkBulkToBucket}
                     className="flex-1 h-11 text-xs font-bold rounded-xl border border-gold/40 bg-gold/10 hover:bg-gold/20 text-gold"
                   >
-                    <Plus className="h-4 w-4 mr-1" /> Add ({activeAnkEntries.length}) to Bucket
+                    <Plus className="h-4 w-4 mr-1" /> Add ({selectedAnks.length}) to Bucket
                   </Button>
                   <Button
                     type="button"
                     onClick={handlePlay}
                     className="flex-1 h-11 text-xs font-bold rounded-xl shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
-                    Confirm & Review ({activeAnkEntries.length} Digits)
+                    Confirm & Review ({selectedAnks.length} Digits)
                   </Button>
                 </div>
               )}
