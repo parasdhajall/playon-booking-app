@@ -208,20 +208,15 @@ class BluetoothPrinterManager {
   public deviceName: string | null = null;
   public deviceAddress: string | null = null;
   private listeners: Set<() => void> = new Set();
+  private isPrinting: boolean = false;
 
   constructor() {
     if (typeof window !== "undefined") {
       this.deviceName = localStorage.getItem("last_printer_name") || null;
       this.deviceAddress = localStorage.getItem("last_printer_address") || null;
-      if (isAndroidNativeApp() && this.deviceName) {
-        this.status = "connected";
-        const bridge = (window as any).AndroidBridge;
-        if (bridge && bridge.connect && this.deviceAddress) {
-          try {
-            bridge.connect(this.deviceAddress);
-          } catch (ignored) {}
-        }
-      }
+      // Do NOT blindly assume connected on startup! If the printer is turned off,
+      // it is physically disconnected until verified or connected.
+      this.status = "disconnected";
     }
   }
 
@@ -235,10 +230,7 @@ class BluetoothPrinterManager {
   }
 
   public isConnected(): boolean {
-    if (isAndroidNativeApp()) {
-      return this.status === "connected" && !!this.deviceName;
-    }
-    return this.status === "connected" && !!this.writeChar;
+    return this.status === "connected";
   }
 
   // Connect to Bluetooth Printer
@@ -501,106 +493,206 @@ class BluetoothPrinterManager {
 
   // Print Receipt automatically
   public async print(data: ReceiptData): Promise<{ success: boolean; message: string }> {
-    const bytes = generateEscPosBytes(data);
+    if (this.isPrinting) {
+      return { success: false, message: "Parchi print ho rahi hai, kripya thoda intezaar karein..." };
+    }
+    this.isPrinting = true;
 
-    // 1. Android Native App Bridge
-    if (isAndroidNativeApp()) {
-      const bridge = (window as any).AndroidBridge;
-      if (!bridge.isBluetoothEnabled()) {
-        return {
-          success: false,
-          message: "Bluetooth OFF hai. Kripya phone ka Bluetooth ON karein.",
-        };
-      }
-      if (!bridge.hasPermissions()) {
-        bridge.requestPermissions();
-        return {
-          success: false,
-          message: "Bluetooth permission allow karein aur dubara print karein.",
-        };
-      }
+    try {
+      const bytes = generateEscPosBytes(data);
 
-      const base64 = uint8ArrayToBase64(bytes);
-      const resRaw = bridge.print(this.deviceAddress || "", base64);
-      try {
-        const res = JSON.parse(resRaw);
-        if (res.success) {
-          this.status = "connected";
-          if (res.deviceName) this.deviceName = res.deviceName;
-          if (res.deviceAddress) this.deviceAddress = res.deviceAddress;
-          if (typeof window !== "undefined" && res.deviceName) {
-            localStorage.setItem("last_printer_name", res.deviceName);
-            if (res.deviceAddress) localStorage.setItem("last_printer_address", res.deviceAddress);
-          }
+      // 1. Android Native App Bridge
+      if (isAndroidNativeApp()) {
+        const bridge = (window as any).AndroidBridge;
+        if (!bridge.isBluetoothEnabled()) {
+          this.status = "disconnected";
           this.notify();
+          return {
+            success: false,
+            message: "Bluetooth OFF hai. Kripya phone ka Bluetooth ON karein.",
+          };
         }
-        return res;
-      } catch (e: any) {
-        return { success: false, message: "Print response parse error: " + (e.message || "") };
+        if (!bridge.hasPermissions()) {
+          bridge.requestPermissions();
+          return {
+            success: false,
+            message: "Bluetooth permission allow karein aur dubara print karein.",
+          };
+        }
+
+        const base64 = uint8ArrayToBase64(bytes);
+
+        // Async non-blocking bridge call with 6s timeout so UI never hangs
+        const resRaw = await new Promise<string>((resolve) => {
+          let finished = false;
+          const timer = setTimeout(() => {
+            if (!finished) {
+              finished = true;
+              resolve(JSON.stringify({
+                success: false,
+                message: "Printer band hai ya connect nahi ho raha (Timeout). Kripya printer ON karein.",
+              }));
+            }
+          }, 6000);
+
+          setTimeout(() => {
+            try {
+              const out = bridge.print(this.deviceAddress || "", base64);
+              if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                resolve(out || "");
+              }
+            } catch (err: any) {
+              if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                resolve(JSON.stringify({
+                  success: false,
+                  message: err?.message || "Bluetooth print error",
+                }));
+              }
+            }
+          }, 15);
+        });
+
+        try {
+          const res = JSON.parse(resRaw);
+          if (res.success) {
+            this.status = "connected";
+            if (res.deviceName) this.deviceName = res.deviceName;
+            if (res.deviceAddress) this.deviceAddress = res.deviceAddress;
+            if (typeof window !== "undefined" && res.deviceName) {
+              localStorage.setItem("last_printer_name", res.deviceName);
+              if (res.deviceAddress) localStorage.setItem("last_printer_address", res.deviceAddress);
+            }
+            this.notify();
+          } else {
+            this.status = "disconnected";
+            this.notify();
+          }
+          return res;
+        } catch (e: any) {
+          this.status = "disconnected";
+          this.notify();
+          return { success: false, message: "Print response error: " + (e.message || "") };
+        }
       }
-    }
 
-    // 2. Web Bluetooth flow
-    if (this.isConnected()) {
+      // 2. Web Bluetooth flow
+      if (this.isConnected()) {
+        return await this.sendBytes(bytes);
+      }
+
+      const connRes = await this.connect();
+      if (!connRes.success) {
+        return connRes;
+      }
+
       return await this.sendBytes(bytes);
+    } finally {
+      this.isPrinting = false;
     }
-
-    const connRes = await this.connect();
-    if (!connRes.success) {
-      return connRes;
-    }
-
-    return await this.sendBytes(bytes);
   }
 
   // Print Agent Hisab automatically
   public async printAgentHisab(data: AgentHisabPrintData): Promise<{ success: boolean; message: string }> {
-    const bytes = generateAgentHisabEscPosBytes(data);
+    if (this.isPrinting) {
+      return { success: false, message: "Parchi print ho rahi hai, kripya thoda intezaar karein..." };
+    }
+    this.isPrinting = true;
 
-    // 1. Android Native App Bridge
-    if (isAndroidNativeApp()) {
-      const bridge = (window as any).AndroidBridge;
-      if (!bridge.isBluetoothEnabled()) {
-        return {
-          success: false,
-          message: "Bluetooth OFF hai. Kripya phone ka Bluetooth ON karein.",
-        };
-      }
-      if (!bridge.hasPermissions()) {
-        bridge.requestPermissions();
-        return {
-          success: false,
-          message: "Bluetooth permission allow karein aur dubara print karein.",
-        };
-      }
+    try {
+      const bytes = generateAgentHisabEscPosBytes(data);
 
-      const base64 = uint8ArrayToBase64(bytes);
-      const resRaw = bridge.print(this.deviceAddress || "", base64);
-      try {
-        const res = JSON.parse(resRaw);
-        if (res.success) {
-          this.status = "connected";
-          if (res.deviceName) this.deviceName = res.deviceName;
-          if (res.deviceAddress) this.deviceAddress = res.deviceAddress;
+      // 1. Android Native App Bridge
+      if (isAndroidNativeApp()) {
+        const bridge = (window as any).AndroidBridge;
+        if (!bridge.isBluetoothEnabled()) {
+          this.status = "disconnected";
           this.notify();
+          return {
+            success: false,
+            message: "Bluetooth OFF hai. Kripya phone ka Bluetooth ON karein.",
+          };
         }
-        return res;
-      } catch (e: any) {
-        return { success: false, message: "Print response parse error: " + (e.message || "") };
+        if (!bridge.hasPermissions()) {
+          bridge.requestPermissions();
+          return {
+            success: false,
+            message: "Bluetooth permission allow karein aur dubara print karein.",
+          };
+        }
+
+        const base64 = uint8ArrayToBase64(bytes);
+
+        // Async non-blocking bridge call with 6s timeout so UI never hangs
+        const resRaw = await new Promise<string>((resolve) => {
+          let finished = false;
+          const timer = setTimeout(() => {
+            if (!finished) {
+              finished = true;
+              resolve(JSON.stringify({
+                success: false,
+                message: "Printer band hai ya connect nahi ho raha (Timeout). Kripya printer ON karein.",
+              }));
+            }
+          }, 6000);
+
+          setTimeout(() => {
+            try {
+              const out = bridge.print(this.deviceAddress || "", base64);
+              if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                resolve(out || "");
+              }
+            } catch (err: any) {
+              if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                resolve(JSON.stringify({
+                  success: false,
+                  message: err?.message || "Bluetooth print error",
+                }));
+              }
+            }
+          }, 15);
+        });
+
+        try {
+          const res = JSON.parse(resRaw);
+          if (res.success) {
+            this.status = "connected";
+            if (res.deviceName) this.deviceName = res.deviceName;
+            if (res.deviceAddress) this.deviceAddress = res.deviceAddress;
+            this.notify();
+          } else {
+            this.status = "disconnected";
+            this.notify();
+          }
+          return res;
+        } catch (e: any) {
+          this.status = "disconnected";
+          this.notify();
+          return { success: false, message: "Print response error: " + (e.message || "") };
+        }
       }
-    }
 
-    // 2. Web Bluetooth flow
-    if (this.isConnected()) {
+      // 2. Web Bluetooth flow
+      if (this.isConnected()) {
+        return await this.sendBytes(bytes);
+      }
+
+      const connRes = await this.connect();
+      if (!connRes.success) {
+        return connRes;
+      }
+
       return await this.sendBytes(bytes);
+    } finally {
+      this.isPrinting = false;
     }
-
-    const connRes = await this.connect();
-    if (!connRes.success) {
-      return connRes;
-    }
-
-    return await this.sendBytes(bytes);
   }
 }
 

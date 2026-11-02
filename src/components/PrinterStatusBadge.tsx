@@ -23,7 +23,7 @@ export function PrinterStatusBadge({
       return;
     }
 
-    toast.info("Opening Bluetooth device search...");
+    toast.info(`Connecting to ${deviceName || "Bluetooth printer"}...`);
     const res = await connect();
     if (res.success) {
       toast.success(res.message);
@@ -41,12 +41,16 @@ export function PrinterStatusBadge({
           ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 shadow-xs"
           : isConnecting
             ? "border-amber-500/50 bg-amber-500/10 text-amber-500 animate-pulse"
-            : "border-red-500/40 bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/20"
+            : deviceName
+              ? "border-red-500/40 bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/20"
+              : "border-red-500/40 bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/20"
       } ${className}`}
       title={
         isConnected
           ? `Printer Connected: ${deviceName}. Tap to disconnect.`
-          : "Printer Disconnected. Tap to pair Bluetooth printer."
+          : deviceName
+            ? `Printer ${deviceName} is OFF / Disconnected. Tap to connect.`
+            : "Printer Disconnected. Tap to pair Bluetooth printer."
       }
     >
       {/* Status Dot */}
@@ -73,7 +77,9 @@ export function PrinterStatusBadge({
           ? `Printer: ${deviceName || "Connected"}`
           : isConnecting
             ? "Connecting…"
-            : "Connect Printer"}
+            : deviceName
+              ? `Printer: ${deviceName} (OFF)`
+              : "Connect Printer"}
       </span>
     </button>
   );

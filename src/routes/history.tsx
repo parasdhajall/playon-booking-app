@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Printer, User, RefreshCw, AlertCircle, Coins, Percent, Trophy, Wallet } from "lucide-react";
@@ -179,51 +179,61 @@ function History() {
 
   const activePayableToAgent = activeCommission + activeWinnings;
 
+  const isPrintingHisabRef = useRef(false);
+
   // Print Official Agent Commission & Hisab Slip
   const handlePrintAgentHisab = async () => {
+    if (isPrintingHisabRef.current) return;
     if (todayBets.length === 0) {
       toast.error("No plays placed today to generate hisab slip");
       return;
     }
-    const now = new Date();
-    const dateStr = new Intl.DateTimeFormat("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).format(now);
+    isPrintingHisabRef.current = true;
+    try {
+      const now = new Date();
+      const dateStr = new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(now);
 
-    const todaySale = todayBets.reduce((sum, b) => sum + (b.points || 0), 0);
-    const todayComm = Math.round((todaySale * commissionRate) / 100);
-    const todayWin = todayBets
-      .filter((b) => b.status === "won")
-      .reduce((sum, b) => sum + (b.payout || 0), 0);
-    const todayTotal = todayComm + todayWin;
+      const todaySale = todayBets.reduce((sum, b) => sum + (b.points || 0), 0);
+      const todayComm = Math.round((todaySale * commissionRate) / 100);
+      const todayWin = todayBets
+        .filter((b) => b.status === "won")
+        .reduce((sum, b) => sum + (b.payout || 0), 0);
+      const todayTotal = todayComm + todayWin;
 
-    const hisabData: AgentHisabPrintData = {
-      agentName: getPlayerDisplayName(user, profile),
-      phone: (profile as any)?.phone || "",
-      marketName: "TODAY'S HISAB (ALL MARKETS)",
-      dateStr,
-      playCount: todayBets.length,
-      totalSale: todaySale,
-      commissionRate,
-      totalCommission: todayComm,
-      totalWinning: todayWin,
-      totalAmount: todayTotal,
-    };
+      const hisabData: AgentHisabPrintData = {
+        agentName: getPlayerDisplayName(user, profile),
+        phone: (profile as any)?.phone || "",
+        marketName: "TODAY'S HISAB (ALL MARKETS)",
+        dateStr,
+        playCount: todayBets.length,
+        totalSale: todaySale,
+        commissionRate,
+        totalCommission: todayComm,
+        totalWinning: todayWin,
+        totalAmount: todayTotal,
+      };
 
-    if (isPrinterConnected) {
-      toast.info("Sending Commission Hisab to Bluetooth thermal printer...");
-      const res = await printerManager.printAgentHisab(hisabData);
-      if (res.success) {
-        toast.success("Hisab slip printed successfully!");
-        return;
+      if (isPrinterConnected) {
+        toast.info("Sending Commission Hisab to Bluetooth thermal printer...");
+        const res = await printerManager.printAgentHisab(hisabData);
+        if (res.success) {
+          toast.success("Hisab slip printed successfully!");
+          return;
+        } else {
+          toast.error(res.message);
+        }
       }
-    }
 
-    // Direct clean 58mm thermal print via isolated iframe (never blank!)
-    printAgentHisabViaSystem(hisabData);
+      // Direct clean 58mm thermal print via isolated iframe (never blank!)
+      printAgentHisabViaSystem(hisabData);
+    } finally {
+      isPrintingHisabRef.current = false;
+    }
   };
 
   if (loading) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Printer, Smartphone, CheckCircle2, X, Download, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,23 +49,34 @@ export function ThermalReceiptModal({
     }
   };
 
+  const isPrintingRef = useRef(false);
+
   const handleBluetoothPrint = async () => {
+    if (isPrintingRef.current || printing) {
+      return;
+    }
+    isPrintingRef.current = true;
     setPrinting(true);
     toast.info("Sending print to thermal printer...");
-    const dataToPrint = { ...receiptData, playerName: playerName.trim() || "Player" };
-    const res = await printerManager.print(dataToPrint);
-    setPrinting(false);
-
-    if (res.success) {
-      toast.success(res.message);
-    } else {
-      toast.error(res.message);
-      toast("Tip: You can also tap 'System Print' to print via Android default printer service.", {
-        action: {
-          label: "System Print",
-          onClick: () => handleSystemPrint(),
-        },
-      });
+    try {
+      const dataToPrint = { ...receiptData, playerName: playerName.trim() || "Player" };
+      const res = await printerManager.print(dataToPrint);
+      if (res.success) {
+        toast.success(res.message);
+      } else {
+        toast.error(res.message);
+        toast("Tip: You can also tap 'System Print' to print via Android default printer service.", {
+          action: {
+            label: "System Print",
+            onClick: () => handleSystemPrint(),
+          },
+        });
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Print write error");
+    } finally {
+      setPrinting(false);
+      isPrintingRef.current = false;
     }
   };
 
