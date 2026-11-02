@@ -501,17 +501,17 @@ export function AdminCommission({ markets }: { markets: Market[] }) {
       totalPayableToAgent: a.totalPayableToAgent,
     };
 
-    return `*📊 प्ले ऑन — एजेंट हिसाब पर्ची*
+    return `*📊 PLAYON AGENT HISAB PARCHI*
 --------------------------------
-👤 *एजेंट:* ${a.name}
-🏢 *बाजार:* ${d.marketName}
-📅 *दिनांक:* ${dateLabel}
+👤 *Agent:* ${a.name}
+🏢 *Bazar:* ${d.marketName}
+📅 *Date:* ${dateLabel}
 --------------------------------
-💰 *कुल बिक्री (धंदा):* ₹${d.totalSale.toLocaleString("en-IN")} (${d.playCount} दांव)
-🎁 *कमीशन (${d.commissionRate}%):* ₹${d.totalCommission.toLocaleString("en-IN")}
-🏆 *विनिंग दावा:* ₹${d.totalWinning.toLocaleString("en-IN")}
+💰 *Total Sale:* ₹${d.totalSale.toLocaleString("en-IN")} (${d.playCount} plays)
+🎁 *Commission (${d.commissionRate}%):* ₹${d.totalCommission.toLocaleString("en-IN")}
+🏆 *Winning Amount:* ₹${d.totalWinning.toLocaleString("en-IN")}
 ================================
-💵 *कुल देय रकम:* ₹${d.totalPayableToAgent.toLocaleString("en-IN")}
+💵 *Total Amount:* ₹${d.totalPayableToAgent.toLocaleString("en-IN")}
 ================================
 _PlayOn Official Matka Management System_`;
   };
@@ -1126,69 +1126,69 @@ _PlayOn Official Matka Management System_`;
               </div>
             </div>
 
-            {/* 58mm Thermal Receipt Visual Container: Pure Hindi Format */}
+            {/* 58mm Thermal Receipt Visual Container: NO ADMIN PROFIT, NO WALLET POINTS, CLEAN TOTAL */}
             <div
               id="printable-agent-slip"
-              className="my-3 w-full max-w-[240px] mx-auto p-3 bg-white text-black font-sans text-[11px] rounded-xl shadow-inner border border-dashed border-gray-400 select-all space-y-2"
+              className="my-3 w-full max-w-[240px] mx-auto p-3 bg-white text-black font-mono text-[11px] rounded-xl shadow-inner border border-dashed border-gray-400 select-all space-y-2"
             >
               {/* Receipt Header */}
               <div className="text-center space-y-0.5 border-b border-dashed border-gray-400 pb-2">
-                <div className="text-base font-black tracking-wider">PLAY ON</div>
-                <div className="text-[11px] font-bold uppercase text-gray-800">एजेंट हिसाब पर्ची</div>
-                <div className="text-[10px] text-gray-600">दिनांक: {dateLabel}</div>
+                <div className="text-lg font-black tracking-wider">PLAY ON</div>
+                <div className="text-[11px] font-bold uppercase text-gray-700">AGENT HISAB PARCHI</div>
+                <div className="text-[10px] text-gray-500">Date: {dateLabel}</div>
               </div>
 
               {/* Agent & Market Info */}
               <div className="space-y-1 text-[11px] border-b border-dashed border-gray-400 pb-2">
                 <div className="flex justify-between font-bold">
-                  <span>एजेंट:</span>
+                  <span>Agent Name:</span>
                   <span>{selectedAgentSlip.name}</span>
                 </div>
                 {selectedAgentSlip.phone && (
-                  <div className="flex justify-between text-gray-600 text-[10px]">
-                    <span>मोबाइल:</span>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Mobile:</span>
                     <span>{selectedAgentSlip.phone}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-gray-800">
-                  <span>बाजार:</span>
-                  <span className="max-w-[120px] truncate">{activeSlipData.marketName}</span>
+                  <span>Bazar / Market:</span>
+                  <span>{activeSlipData.marketName}</span>
                 </div>
-                <div className="flex justify-between text-gray-600 text-[10px]">
-                  <span>कुल दांव:</span>
-                  <span>{activeSlipData.playCount} दांव</span>
+                <div className="flex justify-between text-gray-600">
+                  <span>Total Plays:</span>
+                  <span>{activeSlipData.playCount} Plays</span>
                 </div>
               </div>
 
               {/* Breakdown Ledger Table */}
               <div className="space-y-1.5 text-xs py-1 border-b border-dashed border-gray-400 pb-2">
-                <div className="flex justify-between font-bold text-gray-800">
-                  <span>कुल बिक्री (धंदा):</span>
+                <div className="flex justify-between font-bold text-gray-700">
+                  <span>Total Sale:</span>
                   <span>₹{activeSlipData.totalSale.toLocaleString("en-IN")}</span>
                 </div>
                 <div className="flex justify-between text-emerald-700 font-bold">
-                  <span>कमीशन ({activeSlipData.commissionRate}%):</span>
+                  <span>Commission ({activeSlipData.commissionRate}%):</span>
                   <span>₹{activeSlipData.totalCommission.toLocaleString("en-IN")}</span>
                 </div>
                 <div className="flex justify-between text-rose-700 font-bold">
-                  <span>विनिंग रकम:</span>
+                  <span>Winning Amount:</span>
                   <span>₹{activeSlipData.totalWinning.toLocaleString("en-IN")}</span>
                 </div>
               </div>
 
               {/* CLEAN TOTAL AMOUNT BOX: No "Admin Profit", No "Total Agent ko Dena" phrase */}
-              <div className="p-2.5 bg-gray-100 rounded-lg space-y-0.5 text-center border border-gray-400">
-                <div className="text-[10px] font-bold text-gray-700">
-                  कुल देय रकम (TOTAL)
+              <div className="p-3 bg-gray-100 rounded-lg space-y-0.5 text-center border border-gray-400">
+                <div className="text-[10px] font-black uppercase tracking-wider text-gray-700">
+                  TOTAL AMOUNT
                 </div>
-                <div className="text-xl font-black text-gray-900">
+                <div className="text-2xl font-black text-gray-900">
                   ₹{activeSlipData.totalPayableToAgent.toLocaleString("en-IN")}
                 </div>
               </div>
 
               {/* Footer: Clean and simple */}
-              <div className="text-[9.5px] text-gray-600 pt-1 text-center">
-                *** धन्यवाद — PLAY ON ***
+              <div className="text-[10px] text-gray-500 pt-1 text-center">
+                *** Thank You for Playing with PlayOn ***
               </div>
             </div>
 
