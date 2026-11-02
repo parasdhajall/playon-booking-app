@@ -35,6 +35,7 @@ import {
   buildTraditionalKhataData,
   generateKhataBahiWhatsAppMessage,
   generateKhataBahiEscPosBytes,
+  printKhataBahiAsPdf,
   saveMagilNave,
 } from "@/lib/khataBahi";
 import { generateKhataSlipImageBlob } from "@/lib/khataImageGenerator";
@@ -217,6 +218,12 @@ export function TraditionalKhataModal({
     } catch {
       toast.error("कॉपी करण्यात त्रुटी आली.");
     }
+  };
+
+  // Direct Normal Full-Size Print & "Save as PDF" (Standard print without thermal printer)
+  const handleNormalPrintOrPdf = () => {
+    toast.info("प्रिंट डायलॉग उघडत आहे (PDF सेव्ह करा किंवा प्रिंट करा)...");
+    printKhataBahiAsPdf(khataData);
   };
 
   // 1-Click 58mm Thermal Print
@@ -677,15 +684,15 @@ export function TraditionalKhataModal({
               <span className="truncate">मजकूर पाठवा</span>
             </Button>
 
-            {/* Thermal Print Button */}
+            {/* Normal Full-Size Print & Save as PDF Button */}
             <Button
               type="button"
-              onClick={handleThermalPrint}
-              disabled={isPrinting}
+              onClick={handleNormalPrintOrPdf}
               className="h-9 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-1.5 shadow-xs rounded-xl cursor-pointer"
+              title="A4 साइज नॉर्मल प्रिंट किंवा PDF सेव्ह करा (Normal Print or Save as PDF)"
             >
               <Printer className="h-3.5 w-3.5" />
-              <span className="truncate">{isPrinting ? "प्रिंट..." : "थर्मल प्रिंट"}</span>
+              <span className="truncate">प्रिंट / Save PDF</span>
             </Button>
 
             {/* Copy Button */}

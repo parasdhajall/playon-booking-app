@@ -447,3 +447,280 @@ export function generateKhataBahiEscPosBytes(data: TraditionalKhataData): Uint8A
   return result;
 }
 
+// Normal Full-Size Print & "Save as PDF" generator for Khata-Bahi (A4 page format)
+export function printKhataBahiAsPdf(data: TraditionalKhataData): void {
+  if (typeof window === "undefined") return;
+
+  const existingFrame = document.getElementById("khata-pdf-print-iframe");
+  if (existingFrame) {
+    existingFrame.remove();
+  }
+
+  const iframe = document.createElement("iframe");
+  iframe.id = "khata-pdf-print-iframe";
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "none";
+  iframe.style.zIndex = "-9999";
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) {
+    window.print();
+    return;
+  }
+
+  const isPink = data.shift === "day";
+  const isBlue = data.shift === "night";
+
+  const theme = isPink
+    ? {
+        bg: "#fff1f2",
+        border: "#fecdd3",
+        text: "#881337",
+        badgeBg: "#ffe4e6",
+        badgeText: "#be123c",
+        thBg: "#ffe4e6",
+        statusBg: data.status === "nave" ? "#ffe4e6" : "#d1fae5",
+        statusBorder: data.status === "nave" ? "#f43f5e" : "#10b981",
+        statusText: data.status === "nave" ? "#9f1239" : "#065f46",
+      }
+    : isBlue
+      ? {
+          bg: "#eff6ff",
+          border: "#bfdbfe",
+          text: "#1e3a8a",
+          badgeBg: "#dbeafe",
+          badgeText: "#1d4ed8",
+          thBg: "#dbeafe",
+          statusBg: data.status === "nave" ? "#fee2e2" : "#d1fae5",
+          statusBorder: data.status === "nave" ? "#ef4444" : "#10b981",
+          statusText: data.status === "nave" ? "#991b1b" : "#065f46",
+        }
+      : {
+          bg: "#fffbeb",
+          border: "#fde68a",
+          text: "#78350f",
+          badgeBg: "#fef3c7",
+          badgeText: "#b45309",
+          thBg: "#fef3c7",
+          statusBg: data.status === "nave" ? "#fee2e2" : "#d1fae5",
+          statusBorder: data.status === "nave" ? "#ef4444" : "#10b981",
+          statusText: data.status === "nave" ? "#991b1b" : "#065f46",
+        };
+
+  const rowsHtml = data.rows
+    .map((r, i) => {
+      const bg = i % 2 === 1 ? `background: ${theme.thBg}50;` : "";
+      const pannaDisplay =
+        r.pannaWin > 0
+          ? `₹${r.pannaWin.toLocaleString("en-IN")}${r.pannaNote ? ` <small>(${r.pannaNote})</small>` : ""}`
+          : "—";
+      return `
+        <tr style="border-bottom: 1px solid ${theme.border}80; ${bg}">
+          <td style="padding: 7px 10px; font-weight: bold;">${r.sessionLabel}</td>
+          <td style="padding: 7px 10px; text-align: right; font-family: monospace;">${r.dhanda > 0 ? `₹${r.dhanda.toLocaleString("en-IN")}` : "—"}</td>
+          <td style="padding: 7px 10px; text-align: right; font-family: monospace; color: #047857; font-weight: bold;">${r.suttaWin > 0 ? `₹${r.suttaWin.toLocaleString("en-IN")}` : "—"}</td>
+          <td style="padding: 7px 10px; text-align: right; font-family: monospace; color: #1d4ed8; font-weight: bold;">${r.jentWin > 0 ? `₹${r.jentWin.toLocaleString("en-IN")}` : "—"}</td>
+          <td style="padding: 7px 10px; text-align: right; font-family: monospace; color: #6d28d9; font-weight: bold;">${pannaDisplay}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  doc.open();
+  doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Khata_Bahi_${data.agentName}_${data.dateStr}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 15mm 10mm;
+    }
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Nirmala UI", sans-serif;
+      margin: 0;
+      padding: 10px;
+      background: #f9fafb;
+      color: #111827;
+      display: flex;
+      justify-content: center;
+    }
+    .slip-container {
+      width: 100%;
+      max-width: 650px;
+      background: ${theme.bg};
+      border: 2px solid ${theme.border};
+      border-radius: 16px;
+      padding: 24px;
+      box-sizing: border-box;
+      color: ${theme.text};
+    }
+    .header {
+      text-align: center;
+      padding-bottom: 12px;
+      border-bottom: 2px dashed ${theme.border};
+    }
+    .title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin: 0 0 4px 0;
+    }
+    .meta {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      background: ${theme.badgeBg};
+      color: ${theme.badgeText};
+      border: 1px solid ${theme.border};
+      text-transform: uppercase;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13px;
+    }
+    th {
+      background: ${theme.thBg};
+      border-bottom: 2px solid ${theme.border};
+      padding: 8px 10px;
+      font-weight: bold;
+      text-align: right;
+    }
+    th:first-child {
+      text-align: left;
+    }
+    .totals {
+      border-top: 2px dashed ${theme.border};
+      padding-top: 14px;
+      font-size: 13px;
+    }
+    .line {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    .final-box {
+      margin-top: 14px;
+      padding: 12px 18px;
+      border-radius: 12px;
+      background: ${theme.statusBg};
+      border: 2px solid ${theme.statusBorder};
+      color: ${theme.statusText};
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-title {
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .status-val {
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .final-amt {
+      font-size: 26px;
+      font-weight: 900;
+      font-family: monospace;
+    }
+    .footer-note {
+      text-align: center;
+      font-size: 11px;
+      font-style: italic;
+      margin-top: 14px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="slip-container">
+    <div class="header">
+      <div class="title">PLAYON BOOK</div>
+      <div class="meta">📅 ${data.dateStr} &nbsp;•&nbsp; एजेंट: <strong>${data.agentName}</strong> ${data.phone ? `&nbsp;•&nbsp; मो: ${data.phone}` : ""}</div>
+      <div class="badge">${data.shiftLabel}</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>बाजार</th>
+          <th>धंदा</th>
+          <th>सुट्टा</th>
+          <th>जेन्ट</th>
+          <th>पाना</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="line" style="font-weight: bold; font-size: 14px;">
+        <span>एकूण धंदा (Total Sale):</span>
+        <span style="font-family: monospace;">₹${data.totalDhanda.toLocaleString("en-IN")}</span>
+      </div>
+      <div class="line">
+        <span>मागील नावे (मागील बाकी / Carry):</span>
+        <span style="font-family: monospace; font-weight: bold;">${data.magilNave >= 0 ? "+" : "-"}₹${Math.abs(data.magilNave).toLocaleString("en-IN")}</span>
+      </div>
+      <div class="line" style="color: #047857;">
+        <span>कमीशन (${data.commissionRate}% वजा):</span>
+        <span style="font-family: monospace; font-weight: bold;">-₹${data.totalCommission.toLocaleString("en-IN")}</span>
+      </div>
+      <div class="line" style="color: #be123c;">
+        <span>एकूण विनिंग दावे (Total Winnings):</span>
+        <span style="font-family: monospace; font-weight: bold;">-₹${data.totalWinnings.toLocaleString("en-IN")}</span>
+      </div>
+
+      <div class="final-box">
+        <div>
+          <div class="status-title">अंतिम बाकी हिसाब (FINAL BALANCE)</div>
+          <div class="status-val">${data.status === "nave" ? "● नावे (एजंटने देणे बाकी)" : "● जमा (एजंटला देणे / जमा)"}</div>
+        </div>
+        <div class="final-amt">₹${data.statusAmount.toLocaleString("en-IN")}</div>
+      </div>
+
+      <div class="footer-note">
+        ${data.shift === "day"
+          ? "ℹ️ हा अंतिम नावे/जमा बॅलन्स नाईट शिफ्टच्या 'मागील नावे' मध्ये ऑटो-कॅरी होईल."
+          : data.shift === "night"
+            ? "ℹ️ हा अंतिम नावे/जमा बॅलन्स उद्या सकाळच्या हिशोबात ऑटो-कॅरी होईल."
+            : "ℹ️ संपूर्ण दिवसाचा एकत्रित डिजिटल हिशोब."}
+      </div>
+    </div>
+  </div>
+</body>
+</html>`);
+  doc.close();
+
+  setTimeout(() => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+  }, 350);
+}
+
