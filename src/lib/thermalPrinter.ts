@@ -171,6 +171,181 @@ export function generateAgentHisabEscPosBytes(data: AgentHisabPrintData): Uint8A
   return result;
 }
 
+// Convert HTML5 Canvas to ESC/POS Raster Bit Image (GS v 0) bytes for 58mm Thermal Printers
+function canvasToEscPosRaster(ctx: CanvasRenderingContext2D, width: number, height: number): Uint8Array {
+  const imgData = ctx.getImageData(0, 0, width, height);
+  const rgba = imgData.data;
+
+  // ESC/POS raster bit image command:
+  // GS v 0 m xL xH yL yH d1...dk
+  const chunkSize = 48; // 48 rows per chunk (safe for Bluetooth BLE MTU buffer)
+  const bytesPerRow = width / 8; // 384 / 8 = 48 bytes
+  const parts: Uint8Array[] = [];
+
+  // Initialize printer: ESC @
+  parts.push(new Uint8Array([0x1B, 0x40]));
+
+  for (let yStart = 0; yStart < height; yStart += chunkSize) {
+    const chunkHeight = Math.min(chunkSize, height - yStart);
+    const chunkBytes = new Uint8Array(8 + bytesPerRow * chunkHeight);
+
+    // GS v 0 0 xL xH yL yH
+    chunkBytes[0] = 0x1D;
+    chunkBytes[1] = 0x76;
+    chunkBytes[2] = 0x30;
+    chunkBytes[3] = 0x00;
+    chunkBytes[4] = bytesPerRow & 0xFF;        // 48 (0x30)
+    chunkBytes[5] = (bytesPerRow >> 8) & 0xFF; // 0
+    chunkBytes[6] = chunkHeight & 0xFF;
+    chunkBytes[7] = (chunkHeight >> 8) & 0xFF;
+
+    let offset = 8;
+    for (let row = 0; row < chunkHeight; row++) {
+      const y = yStart + row;
+      for (let colByte = 0; colByte < bytesPerRow; colByte++) {
+        let byteVal = 0;
+        for (let bit = 0; bit < 8; bit++) {
+          const x = colByte * 8 + bit;
+          const pixelIndex = (y * width + x) * 4;
+          const r = rgba[pixelIndex] ?? 255;
+          const g = rgba[pixelIndex + 1] ?? 255;
+          const b = rgba[pixelIndex + 2] ?? 255;
+          const a = rgba[pixelIndex + 3] ?? 255;
+
+          // Dark pixel detection
+          const isDark = a > 128 && (0.299 * r + 0.587 * g + 0.114 * b) < 170;
+          if (isDark) {
+            byteVal |= (1 << (7 - bit));
+          }
+        }
+        chunkBytes[offset++] = byteVal;
+      }
+    }
+    parts.push(chunkBytes);
+  }
+
+  // Feed 4 blank lines and partial paper cut
+  parts.push(new Uint8Array([
+    0x1B, 0x64, 0x04, // ESC d 4 (feed 4 lines)
+    0x1D, 0x56, 0x01, // GS V 1 (partial cut)
+  ]));
+
+  const totalLength = parts.reduce((acc, p) => acc + p.length, 0);
+  const result = new Uint8Array(totalLength);
+  let curOffset = 0;
+  for (const part of parts) {
+    result.set(part, curOffset);
+    curOffset += part.length;
+  }
+  return result;
+}
+
+// Generate Hindi Canvas and convert to ESC/POS Raster Bitmap Bytes (Method 1)
+export async function generateAgentHisabHindiRasterBytes(data: AgentHisabPrintData): Promise<Uint8Array> {
+  if (typeof window === "undefined" || !document.createElement) {
+    return generateAgentHisabEscPosBytes(data);
+  }
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return generateAgentHisabEscPosBytes(data);
+  }
+
+  // 384 dots = exactly 48mm printable area on 58mm thermal roll at 203 DPI
+  const width = 384;
+  const maxInitialHeight = 520;
+  canvas.width = width;
+  canvas.height = maxInitialHeight;
+
+  // White background
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, width, maxInitialHeight);
+
+  ctx.fillStyle = "#000000";
+  ctx.textBaseline = "top";
+
+  let y = 10;
+
+  // 1. Header (Centered)
+  ctx.textAlign = "center";
+  ctx.font = "bold 26px 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif";
+  ctx.fillText("PLAY ON", width / 2, y);
+  y += 32;
+
+  ctx.font = "bold 19px 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif";
+  ctx.fillText("एजेंट हिसाब पर्ची", width / 2, y);
+  y += 26;
+
+  ctx.font = "14px 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif";
+  ctx.fillText(`दिनांक: ${data.dateStr}`, width / 2, y);
+  y += 24;
+
+  // Dashed separator
+  ctx.beginPath();
+  ctx.setLineDash([4, 4]);
+  ctx.moveTo(8, y);
+  ctx.lineTo(width - 8, y);
+  ctx.stroke();
+  y += 10;
+
+  // Helper row drawer
+  const drawRow = (left: string, right: string, isBold = false, fontSize = 16) => {
+    ctx.font = `${isBold ? "bold " : ""}${fontSize}px 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif`;
+    ctx.textAlign = "left";
+    ctx.fillText(left, 12, y);
+    ctx.textAlign = "right";
+    ctx.fillText(right, width - 12, y);
+    y += fontSize + 8;
+  };
+
+  // 2. Info
+  drawRow("एजेंट:", data.agentName, true, 16);
+  if (data.phone) {
+    drawRow("मोबाइल:", data.phone, false, 15);
+  }
+  drawRow("बाजार:", data.marketName, true, 16);
+  drawRow("कुल दांव:", `${data.playCount} दांव`, false, 15);
+
+  // Dashed separator
+  ctx.beginPath();
+  ctx.setLineDash([4, 4]);
+  ctx.moveTo(8, y);
+  ctx.lineTo(width - 8, y);
+  ctx.stroke();
+  y += 10;
+
+  // 3. Financial Breakdown
+  drawRow("कुल बिक्री (धंदा):", `₹${data.totalSale.toLocaleString("en-IN")}`, true, 16);
+  drawRow(`कमीशन (${data.commissionRate}%):`, `₹${data.totalCommission.toLocaleString("en-IN")}`, true, 16);
+  drawRow("विनिंग रकम:", `₹${data.totalWinning.toLocaleString("en-IN")}`, true, 16);
+
+  y += 6;
+
+  // 4. Clean Total Box
+  ctx.setLineDash([]);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(10, y, width - 20, 66);
+
+  ctx.textAlign = "center";
+  ctx.font = "bold 13px 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif";
+  ctx.fillText("कुल देय रकम (TOTAL)", width / 2, y + 8);
+
+  ctx.font = "bold 26px 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif";
+  ctx.fillText(`₹${data.totalAmount.toLocaleString("en-IN")}`, width / 2, y + 28);
+  y += 76;
+
+  // 5. Footer
+  ctx.font = "13px 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("*** धन्यवाद — PLAY ON ***", width / 2, y);
+  y += 24;
+
+  // Sliced strictly to actual height (no wasted blank paper)
+  const finalHeight = Math.ceil(y);
+  return canvasToEscPosRaster(ctx, width, finalHeight);
+}
+
 export function isAndroidNativeApp(): boolean {
   return typeof window !== "undefined" && typeof (window as any).AndroidBridge !== "undefined";
 }
@@ -553,9 +728,15 @@ class BluetoothPrinterManager {
     return await this.sendBytes(bytes);
   }
 
-  // Print Agent Hisab automatically
+  // Print Agent Hisab automatically using Method 1 (Canvas to Bitmap ESC/POS Raster in Hindi)
   public async printAgentHisab(data: AgentHisabPrintData): Promise<{ success: boolean; message: string }> {
-    const bytes = generateAgentHisabEscPosBytes(data);
+    let bytes: Uint8Array;
+    try {
+      bytes = await generateAgentHisabHindiRasterBytes(data);
+    } catch (e) {
+      console.warn("Hindi canvas raster generation fallback:", e);
+      bytes = generateAgentHisabEscPosBytes(data);
+    }
 
     // 1. Android Native App Bridge
     if (isAndroidNativeApp()) {
@@ -729,60 +910,60 @@ export function printReceiptHtml(htmlContent: string) {
 
 export function generateAgentHisabHtml(data: AgentHisabPrintData): string {
   return `
-    <div style="width: 48mm; max-width: 48mm; margin: 0 auto; box-sizing: border-box; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.3; color: #000; word-break: break-word;">
+    <div style="width: 48mm; max-width: 48mm; margin: 0 auto; box-sizing: border-box; font-family: 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif; font-size: 10px; line-height: 1.35; color: #000; word-break: break-word;">
       <!-- Header -->
       <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 5px;">
         <div style="font-size: 15px; font-weight: 900; letter-spacing: 1px;">PLAY ON</div>
-        <div style="font-size: 10px; font-weight: bold; text-transform: uppercase;">AGENT HISAB PARCHI</div>
-        <div style="font-size: 9px; color: #333;">Date: ${data.dateStr}</div>
+        <div style="font-size: 11px; font-weight: bold;">एजेंट हिसाब पर्ची</div>
+        <div style="font-size: 9px; color: #333;">दिनांक: ${data.dateStr}</div>
       </div>
 
       <!-- Agent & Market Info -->
       <div style="font-size: 10px; border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 5px;">
         <div style="display: flex; justify-content: space-between; font-weight: bold;">
-          <span>Agent:</span>
+          <span>एजेंट:</span>
           <span>${data.agentName}</span>
         </div>
         ${data.phone ? `
         <div style="display: flex; justify-content: space-between; font-size: 9.5px;">
-          <span>Mobile:</span>
+          <span>मोबाइल:</span>
           <span>${data.phone}</span>
         </div>` : ""}
         <div style="display: flex; justify-content: space-between; font-weight: bold;">
-          <span>Bazar:</span>
+          <span>बाजार:</span>
           <span style="max-width: 28mm; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${data.marketName}</span>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 9.5px;">
-          <span>Plays:</span>
-          <span>${data.playCount} Bets</span>
+          <span>कुल दांव:</span>
+          <span>${data.playCount} दांव</span>
         </div>
       </div>
 
       <!-- Breakdown Table -->
       <div style="font-size: 10px; border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 5px;">
         <div style="display: flex; justify-content: space-between;">
-          <span>Total Sale:</span>
-          <span style="font-weight: bold;">Rs.${data.totalSale.toLocaleString("en-IN")}</span>
+          <span>कुल बिक्री (धंदा):</span>
+          <span style="font-weight: bold;">₹${data.totalSale.toLocaleString("en-IN")}</span>
         </div>
         <div style="display: flex; justify-content: space-between;">
-          <span>Comm (${data.commissionRate}%):</span>
-          <span style="font-weight: bold;">Rs.${data.totalCommission.toLocaleString("en-IN")}</span>
+          <span>कमीशन (${data.commissionRate}%):</span>
+          <span style="font-weight: bold;">₹${data.totalCommission.toLocaleString("en-IN")}</span>
         </div>
         <div style="display: flex; justify-content: space-between;">
-          <span>Winning:</span>
-          <span style="font-weight: bold;">Rs.${data.totalWinning.toLocaleString("en-IN")}</span>
+          <span>विनिंग रकम:</span>
+          <span style="font-weight: bold;">₹${data.totalWinning.toLocaleString("en-IN")}</span>
         </div>
       </div>
 
       <!-- Total Box -->
-      <div style="text-align: center; padding: 4px; border: 1px solid #000; margin-bottom: 6px;">
-        <div style="font-size: 9px; font-weight: bold; text-transform: uppercase;">TOTAL AMOUNT</div>
-        <div style="font-size: 16px; font-weight: 900;">Rs.${data.totalAmount.toLocaleString("en-IN")}</div>
+      <div style="text-align: center; padding: 4px; border: 1.5px solid #000; margin-bottom: 6px;">
+        <div style="font-size: 9px; font-weight: bold;">कुल देय रकम (TOTAL)</div>
+        <div style="font-size: 16px; font-weight: 900;">₹${data.totalAmount.toLocaleString("en-IN")}</div>
       </div>
 
       <!-- Footer -->
       <div style="text-align: center; font-size: 8.5px; padding-top: 2px;">
-        *** Thank You for Playing ***
+        *** धन्यवाद — PLAY ON ***
       </div>
     </div>
   `;
