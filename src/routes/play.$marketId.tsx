@@ -26,7 +26,7 @@ import {
 } from "@/lib/thermalPrinter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProfile, useTodayExpense } from "@/hooks/useAuth";
-import { GAMES, PLAYABLE, type GameType, fmtTime, fmtBookingClose, resultLabel, isOpenPast, isClosePast, getPlayerDisplayName, canMarketDeclareOpen, isMarketScheduledToday } from "@/lib/matka";
+import { GAMES, PLAYABLE, type GameType, fmtTime, fmtBookingClose, getEffectiveTimes, resultLabel, isOpenPast, isClosePast, getPlayerDisplayName, canMarketDeclareOpen, isMarketScheduledToday } from "@/lib/matka";
 import {
   SINGLE_PANNA_BY_ANK,
   DOUBLE_PANNA_BY_ANK,
@@ -1169,22 +1169,27 @@ function PlayPage() {
         </div>
 
         {/* Timing, Date and Agent Info */}
-        <div className="mt-2.5 flex items-center justify-between text-[11px] text-muted-foreground border-t pt-2 flex-wrap gap-2">
-          <span className="flex items-center gap-1" title={`Draw Result: ${fmtTime(m.open_time)} - ${fmtTime(m.close_time)}`}>
-            <Clock className="h-3 w-3 text-primary" /> Result: {fmtTime(m.open_time)} – {fmtTime(m.close_time)}
-          </span>
-          <span className="flex items-center gap-1 font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px]" title="Booking counters close strictly 10 minutes before result">
-            <Lock className="h-2.5 w-2.5" /> Closes: {fmtBookingClose(m.open_time)} (O) / {fmtBookingClose(m.close_time)} (C)
-          </span>
-          {user && (
-            <span className="flex items-center gap-1 font-semibold text-gold" title="Logged in player/agent">
-              <User className="h-3 w-3 text-gold shrink-0" /> {getPlayerDisplayName(user, profile)}
-            </span>
-          )}
-          <span className="flex items-center gap-1 font-medium text-foreground">
-            <Calendar className="h-3 w-3 text-primary" /> {todaySched.scheduleLabel}
-          </span>
-        </div>
+        {(() => {
+          const eff = getEffectiveTimes(m);
+          return (
+            <div className="mt-2.5 flex items-center justify-between text-[11px] text-muted-foreground border-t pt-2 flex-wrap gap-2">
+              <span className="flex items-center gap-1" title={`Draw Result: ${fmtTime(eff.open_time)} - ${fmtTime(eff.close_time)}`}>
+                <Clock className="h-3 w-3 text-primary" /> Result: {fmtTime(eff.open_time)} – {fmtTime(eff.close_time)}
+              </span>
+              <span className="flex items-center gap-1 font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px]" title="Booking counters close strictly 10 minutes before result">
+                <Lock className="h-2.5 w-2.5" /> Closes: {fmtBookingClose(eff.open_time)} (O) / {fmtBookingClose(eff.close_time)} (C)
+              </span>
+              {user && (
+                <span className="flex items-center gap-1 font-semibold text-gold" title="Logged in player/agent">
+                  <User className="h-3 w-3 text-gold shrink-0" /> {getPlayerDisplayName(user, profile)}
+                </span>
+              )}
+              <span className="flex items-center gap-1 font-medium text-foreground">
+                <Calendar className="h-3 w-3 text-primary" /> {todaySched.scheduleLabel}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Closed on Sunday / Holiday Alert Banner */}
         {isClosedToday && (

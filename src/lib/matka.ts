@@ -165,6 +165,37 @@ export function isMarketScheduledToday(marketName?: string | null): {
 // 10-Minute Buffer Rule: Booking counters close strictly 10 minutes before actual result declaration
 export const BUFFER_MINUTES = 10;
 
+// Official DPBoss live market operating timings
+export const OFFICIAL_MARKET_TIMINGS: Record<string, { open_time: string; close_time: string }> = {
+  "MILAN MORNING": { open_time: "10:30:00", close_time: "11:30:00" },
+  SRIDEVI: { open_time: "11:35:00", close_time: "12:35:00" },
+  PADMAVATI: { open_time: "11:40:00", close_time: "12:40:00" },
+  PADMAVATHI: { open_time: "11:40:00", close_time: "12:40:00" },
+  "KALYAN MORNING": { open_time: "11:59:00", close_time: "12:59:00" },
+  "TIME BAZAR": { open_time: "13:05:00", close_time: "14:05:00" },
+  "MADHUR DAY": { open_time: "13:30:00", close_time: "14:30:00" },
+  "MILAN DAY": { open_time: "15:05:00", close_time: "17:05:00" },
+  "RAJDHANI DAY": { open_time: "15:15:00", close_time: "17:15:00" },
+  KALYAN: { open_time: "15:45:00", close_time: "17:45:00" },
+  "SRIDEVI NIGHT": { open_time: "19:15:00", close_time: "20:15:00" },
+  "PADMAVATI NIGHT": { open_time: "19:45:00", close_time: "20:45:00" },
+  "PADMAVATHI NIGHT": { open_time: "19:45:00", close_time: "20:45:00" },
+  "MADHUR NIGHT": { open_time: "20:30:00", close_time: "22:30:00" },
+  "MILAN NIGHT": { open_time: "21:05:00", close_time: "23:05:00" },
+  "RAJDHANI NIGHT": { open_time: "21:35:00", close_time: "23:45:00" },
+  "KALYAN NIGHT": { open_time: "21:40:00", close_time: "23:40:00" },
+  "MAIN BAZAR": { open_time: "22:00:00", close_time: "00:10:00" },
+};
+
+export function getEffectiveTimes(m: { name?: string; open_time?: string; close_time?: string }) {
+  const clean = (m.name || "").trim().toUpperCase();
+  const official = OFFICIAL_MARKET_TIMINGS[clean];
+  return {
+    open_time: official?.open_time || m.open_time || "10:00:00",
+    close_time: official?.close_time || m.close_time || "11:00:00",
+  };
+}
+
 export function getCutoffMinutes(timeMinutes: number, buffer: number = BUFFER_MINUTES): number {
   let c = timeMinutes - buffer;
   if (c < 0) c += 24 * 60;
@@ -191,9 +222,10 @@ export function isOpenPast(m: { name?: string; open_time: string; close_time: st
   // If open result was declared today
   if (canMarketDeclareOpen(m) && m.open_panna) return true;
 
+  const eff = getEffectiveTimes(m);
   const nowM = toMin(istHHMM());
-  const openM = toMin(m.open_time);
-  const closeM = toMin(m.close_time);
+  const openM = toMin(eff.open_time);
+  const closeM = toMin(eff.close_time);
   const isCross = closeM <= openM;
   const openCutoff = getCutoffMinutes(openM, BUFFER_MINUTES);
 
@@ -211,9 +243,10 @@ export function isClosePast(m: { name?: string; open_time: string; close_time: s
   // If close result was declared today
   if (canMarketDeclareOpen(m) && m.close_panna) return true;
 
+  const eff = getEffectiveTimes(m);
   const nowM = toMin(istHHMM());
-  const openM = toMin(m.open_time);
-  const closeM = toMin(m.close_time);
+  const openM = toMin(eff.open_time);
+  const closeM = toMin(eff.close_time);
   const isCross = closeM <= openM;
   const closeCutoff = getCutoffMinutes(closeM, BUFFER_MINUTES);
 
@@ -361,9 +394,10 @@ export function sortMarketsForAdmin<T extends {
 // Check whether market's open session time has actually arrived today in IST
 export function canMarketDeclareOpen(m: { open_time: string; close_time: string; name?: string }) {
   if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return false;
+  const eff = getEffectiveTimes(m);
   const nowM = toMin(istHHMM());
-  const oM = toMin(m.open_time);
-  const cM = toMin(m.close_time);
+  const oM = toMin(eff.open_time);
+  const cM = toMin(eff.close_time);
   if (cM > oM) {
     return nowM >= oM;
   } else {
@@ -376,9 +410,10 @@ export function canMarketDeclareOpen(m: { open_time: string; close_time: string;
 export function canMarketDeclareClose(m: { open_time: string; close_time: string; open_panna?: string | null; name?: string }) {
   if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return false;
   if (!m.open_panna) return false; // Open result must be declared before close
+  const eff = getEffectiveTimes(m);
   const nowM = toMin(istHHMM());
-  const oM = toMin(m.open_time);
-  const cM = toMin(m.close_time);
+  const oM = toMin(eff.open_time);
+  const cM = toMin(eff.close_time);
   if (cM > oM) {
     return nowM >= cM;
   } else {

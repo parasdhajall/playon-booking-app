@@ -965,6 +965,17 @@ function Admin() {
               <Button
                 type="button"
                 variant="outline"
+                disabled={isApplyingSchedule}
+                className="h-full border-amber-500/40 text-xs font-semibold gap-1.5 hover:bg-amber-500/10 text-amber-400"
+                onClick={handleApplyUserSchedule}
+                title="Sync all 16 markets with official DPBoss timings and 10-minute counter buffer"
+              >
+                <Sparkles className={`h-3.5 w-3.5 ${isApplyingSchedule ? "animate-spin" : ""}`} />
+                {isApplyingSchedule ? "Syncing..." : "Sync DPBoss Timings (16 Bazars)"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
                 disabled={isResettingAll}
                 className="h-full border-primary/40 text-xs font-semibold gap-1.5 hover:bg-primary/10"
                 onClick={handleResetAllMarkets}
