@@ -39,7 +39,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProfile } from "@/hooks/useAuth";
 import { marketsQuery } from "./index";
-import { resultLabel, fmtTime, marketStatus, fmtIST, toISTDateString, gameLabel, canMarketDeclareOpen, canMarketDeclareClose, isMarketOpenForAdmin, sortMarketsForAdmin, isMarketScheduledToday } from "@/lib/matka";
+import { resultLabel, fmtTime, fmtBookingClose, marketStatus, fmtIST, toISTDateString, gameLabel, canMarketDeclareOpen, canMarketDeclareClose, isMarketOpenForAdmin, sortMarketsForAdmin, isMarketScheduledToday } from "@/lib/matka";
 import { AdminPlays } from "@/components/AdminPlays";
 import { AdminRiskHedging } from "@/components/AdminRiskHedging";
 import { AdminCommission } from "@/components/AdminCommission";
@@ -646,16 +646,22 @@ function Admin() {
     setIsApplyingSchedule(true);
     try {
       const desiredMarkets = [
-        { name: "SRIDEVI", open_time: "11:30:00", close_time: "12:30:00" },
-        { name: "PADMAVATI", open_time: "11:35:00", close_time: "12:35:00" },
-        { name: "TIME BAZAR", open_time: "13:10:00", close_time: "14:10:00" },
-        { name: "MILAN DAY", open_time: "15:10:00", close_time: "17:10:00" },
-        { name: "RAJDHANI DAY", open_time: "15:10:00", close_time: "17:10:00" },
-        { name: "SRIDEVI NIGHT", open_time: "19:10:00", close_time: "20:10:00" },
-        { name: "PADMAVATI NIGHT", open_time: "19:40:00", close_time: "20:40:00" },
-        { name: "MILAN NIGHT", open_time: "21:15:00", close_time: "23:15:00" },
-        { name: "RAJDHANI NIGHT", open_time: "21:30:00", close_time: "23:35:00" },
-        { name: "KALYAN NIGHT", open_time: "21:40:00", close_time: "23:30:00" },
+        { name: "MILAN MORNING", open_time: "10:30:00", close_time: "11:30:00" },
+        { name: "SRIDEVI", open_time: "11:35:00", close_time: "12:35:00" },
+        { name: "PADMAVATI", open_time: "11:40:00", close_time: "12:40:00" },
+        { name: "KALYAN MORNING", open_time: "11:59:00", close_time: "12:59:00" },
+        { name: "TIME BAZAR", open_time: "13:05:00", close_time: "14:05:00" },
+        { name: "MADHUR DAY", open_time: "13:30:00", close_time: "14:30:00" },
+        { name: "MILAN DAY", open_time: "15:05:00", close_time: "17:05:00" },
+        { name: "RAJDHANI DAY", open_time: "15:15:00", close_time: "17:15:00" },
+        { name: "KALYAN", open_time: "15:45:00", close_time: "17:45:00" },
+        { name: "SRIDEVI NIGHT", open_time: "19:15:00", close_time: "20:15:00" },
+        { name: "PADMAVATI NIGHT", open_time: "19:45:00", close_time: "20:45:00" },
+        { name: "MADHUR NIGHT", open_time: "20:30:00", close_time: "22:30:00" },
+        { name: "MILAN NIGHT", open_time: "21:05:00", close_time: "23:05:00" },
+        { name: "RAJDHANI NIGHT", open_time: "21:35:00", close_time: "23:45:00" },
+        { name: "KALYAN NIGHT", open_time: "21:40:00", close_time: "23:40:00" },
+        { name: "MAIN BAZAR", open_time: "22:00:00", close_time: "00:10:00" },
       ];
 
       for (const item of desiredMarkets) {
@@ -677,7 +683,7 @@ function Admin() {
       }
 
       await qc.invalidateQueries({ queryKey: ["markets"] });
-      toast.success("All 10 bazars updated: Padmavati added & corrected safe timings set!");
+      toast.success("All 16 bazars updated with live DPBoss timings and 10-min counter buffer!");
     } catch (err: any) {
       toast.error(err.message || "Failed to update schedule");
     } finally {
@@ -687,8 +693,8 @@ function Admin() {
 
   useEffect(() => {
     if (!markets || markets.length === 0 || !user || !profile?.isAdmin || isAutoScheduleAppliedRef.current) return;
-    const padmavati = markets.find((m) => m.name.toUpperCase() === "PADMAVATI");
-    if (!padmavati || padmavati.open_time !== "11:35:00") {
+    const kalyan = markets.find((m) => m.name.toUpperCase() === "KALYAN");
+    if (!kalyan || kalyan.open_time !== "15:45:00") {
       isAutoScheduleAppliedRef.current = true;
       handleApplyUserSchedule();
     }
@@ -1173,6 +1179,9 @@ function Admin() {
                     >
                       Save Times
                     </Button>
+                    <span className="text-[10px] text-amber-500 font-semibold bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20" title="Counter closes 10 minutes before actual draw">
+                      🔒 Booking Closes: {fmtBookingClose(times[m.id]?.open_time ?? m.open_time)} (O) / {fmtBookingClose(times[m.id]?.close_time ?? m.close_time)} (C)
+                    </span>
 
                     {/* Manual Declare Result */}
                     {!m.close_panna ? (

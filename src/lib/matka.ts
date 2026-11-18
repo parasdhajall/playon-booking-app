@@ -106,7 +106,9 @@ export const DEFAULT_MARKET_SCHEDULES: Record<string, MarketScheduleInfo> = {
   "MILAN NIGHT": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
   "MILAN MORNING": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
   PADMAVATI: { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  PADMAVATHI: { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
   "PADMAVATI NIGHT": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
+  "PADMAVATHI NIGHT": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
   "SUPREME DAY": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
   "SUPREME NIGHT": { openDays: [0, 1, 2, 3, 4, 5, 6], label: "7 Days" },
 };
@@ -160,30 +162,73 @@ export function isMarketScheduledToday(marketName?: string | null): {
   };
 }
 
+// 10-Minute Buffer Rule: Booking counters close strictly 10 minutes before actual result declaration
+export const BUFFER_MINUTES = 10;
+
+export function getCutoffMinutes(timeMinutes: number, buffer: number = BUFFER_MINUTES): number {
+  let c = timeMinutes - buffer;
+  if (c < 0) c += 24 * 60;
+  return c;
+}
+
+export function fmtBookingClose(t?: string | null, buffer: number = BUFFER_MINUTES): string {
+  if (!t || typeof t !== "string") return "--:--";
+  const parts = t.split(":");
+  if (parts.length < 2) return t;
+  const h = Number(parts[0]) || 0;
+  const m = Number(parts[1]) || 0;
+  const totalMin = h * 60 + m;
+  let closeMin = totalMin - buffer;
+  if (closeMin < 0) closeMin += 24 * 60;
+  const ch = Math.floor(closeMin / 60) % 24;
+  const cm = closeMin % 60;
+  const ap = ch >= 12 ? "PM" : "AM";
+  return `${((ch + 11) % 12) + 1}:${String(cm).padStart(2, "0")} ${ap}`;
+}
+
 export function isOpenPast(m: { name?: string; open_time: string; close_time: string; open_panna?: string | null }) {
   if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return true;
-  // If today's open session has not arrived yet, open session cannot be past
-  if (!canMarketDeclareOpen(m)) return false;
-  if (m.open_panna) return true;
+  // If open result was declared today
+  if (canMarketDeclareOpen(m) && m.open_panna) return true;
+
   const nowM = toMin(istHHMM());
   const openM = toMin(m.open_time);
   const closeM = toMin(m.close_time);
-  return closeM > openM ? nowM >= openM : (nowM >= openM || nowM < closeM);
+  const isCross = closeM <= openM;
+  const openCutoff = getCutoffMinutes(openM, BUFFER_MINUTES);
+
+  if (!isCross) {
+    // Normal daytime market: booking closes at (open_time - 10 min)
+    return nowM >= openCutoff;
+  } else {
+    // Overnight market (e.g. 22:00 to 00:10): booking closes at 21:50, stays closed through night window < 360 (06:00 AM)
+    return nowM >= openCutoff || nowM < 360;
+  }
 }
 
 export function isClosePast(m: { name?: string; open_time: string; close_time: string; close_panna?: string | null }) {
   if (m.name && !isMarketScheduledToday(m.name).isRunningToday) return true;
-  // If today's open session has not arrived yet, close session cannot be past
-  if (!canMarketDeclareOpen(m)) return false;
-  if (m.close_panna) return true;
+  // If close result was declared today
+  if (canMarketDeclareOpen(m) && m.close_panna) return true;
+
   const nowM = toMin(istHHMM());
   const openM = toMin(m.open_time);
   const closeM = toMin(m.close_time);
-  if (closeM > openM) {
-    return nowM >= closeM;
+  const isCross = closeM <= openM;
+  const closeCutoff = getCutoffMinutes(closeM, BUFFER_MINUTES);
+
+  if (!isCross) {
+    // Normal daytime market: booking closes at (close_time - 10 min)
+    return nowM >= closeCutoff;
   } else {
-    // Overnight market (e.g. 21:40 to 00:05): close is between 00:05 and 06:00 AM
-    return nowM >= closeM && nowM < 360;
+    // Overnight market: booking closes at (close_time - 10 min) and remains closed until 06:00 AM
+    if (closeCutoff < openM) {
+      // e.g. Close 00:10 -> closeCutoff 00:00 (0m)
+      return nowM >= closeCutoff && nowM < 360;
+    } else {
+      // e.g. Close 23:55 -> closeCutoff 23:45
+      return nowM >= closeCutoff || nowM < 360;
+    }
   }
 }
 
@@ -206,29 +251,17 @@ export function marketStatus(m: {
     }
   }
 
-  // If today's open session hasn't arrived yet (morning/afternoon before open time):
-  // Market is open for players to place today's bets!
-  if (!canMarketDeclareOpen(m)) {
-    // For overnight market between 00:05 and 06:00 AM, market is closed for the night
-    const nowM = toMin(istHHMM());
-    const oM = toMin(m.open_time);
-    const cM = toMin(m.close_time);
-    if (cM < oM && nowM >= cM && nowM < 360) {
-      return { state: "closed" as MarketState, note: "Closed for today" };
-    }
-    return { state: "open" as MarketState, note: "Open for Play" };
-  }
-
+  // 2. Has close counter passed or close declared? Entire market closed for today
   if (isClosePast(m)) {
     return { state: "closed" as MarketState, note: "Closed for today" };
   }
 
-  // If open time has passed or open result declared -> Close session is running
+  // 3. Has open counter passed or open declared? Open is closed, but Close session is open
   if (isOpenPast(m)) {
     return { state: "open" as MarketState, note: "Open (Close Session)" };
   }
 
-  // Before open time -> Market is running live for Open & Jodi/Sangam
+  // 4. Before open cutoff -> Market is open for both Open & Close sessions (including Jodi/Sangam)
   return { state: "open" as MarketState, note: "Open for Play" };
 }
 

@@ -1,44 +1,63 @@
--- 1. FIX PLACE_BET: Allow playing anytime before Open/Close timings (DPBOSS style)
+-- 1. FIX PLACE_BET: 10-Minute Buffer Rule (Booking counters close 10 min before result)
 create or replace function public.place_bet(_market uuid, _game text, _session text, _number text, _points integer)
 returns integer language plpgsql security definer set search_path = public as $$
-declare m public.markets; bal integer; distinct_ct integer; now_t time;
+declare
+  m public.markets;
+  bal integer;
+  distinct_ct integer;
+  now_t time;
+  is_cross boolean;
+  open_passed boolean;
+  close_passed boolean;
 begin
   if auth.uid() is null then raise exception 'Not signed in'; end if;
-  if _points < 10 or _points > 10000 then raise exception 'Points must be between 10 and 10000'; end if;
+  if _points < 5 or _points > 10000 then raise exception 'Points must be between 5 and 10000'; end if;
   select * into m from public.markets where id=_market;
   if m.id is null or not m.active then raise exception 'Market is closed'; end if;
 
   now_t := (now() at time zone 'Asia/Kolkata')::time;
+  is_cross := (m.close_time <= m.open_time);
 
-  -- If close panna is already declared or time is past close time, the entire market is closed
-  if m.close_panna is not null then
-    raise exception 'Market has already closed for today';
+  -- Has Open booking closed? (10-minute buffer before Open result)
+  if not is_cross then
+    open_passed := (now_t >= (m.open_time - interval '10 minutes')::time);
+  else
+    open_passed := (now_t >= (m.open_time - interval '10 minutes')::time or now_t < '06:00:00'::time);
   end if;
 
-  if m.close_time > m.open_time then
-    if now_t >= m.close_time then
-      raise exception 'Market has closed for today (closed at %)', to_char(m.close_time, 'HH12:MI AM');
-    end if;
+  -- Self-healing check: if open session hasn't arrived today, any result is leftover from previous day
+  if not open_passed and (m.open_panna is not null or m.close_panna is not null) then
+    update public.markets set open_panna = null, close_panna = null where id = _market;
+    m.open_panna := null;
+    m.close_panna := null;
+  end if;
+
+  -- Has Close booking closed? (10-minute buffer before Close result)
+  if not is_cross then
+    close_passed := (now_t >= (m.close_time - interval '10 minutes')::time);
   else
-    -- overnight market (e.g., 21:40 to 00:05)
-    if now_t >= m.close_time and now_t < m.open_time then
-      raise exception 'Market has closed for today';
+    -- Overnight market: booking closes at 10m before close and stays closed until 06:00 AM
+    if (m.close_time - interval '10 minutes')::time < m.open_time then
+      close_passed := (now_t >= (m.close_time - interval '10 minutes')::time and now_t < '06:00:00'::time);
+    else
+      close_passed := (now_t >= (m.close_time - interval '10 minutes')::time or now_t < '06:00:00'::time);
     end if;
+  end if;
+
+  if m.close_panna is not null or close_passed then
+    raise exception 'Market booking has closed for today (% counter closed at %)', m.name, to_char((m.close_time - interval '10 minutes')::time, 'HH12:MI AM');
   end if;
 
   -- Validate game type
   if _game not in ('single','jodi','single_panna','double_panna','triple_panna','half_sangam','full_sangam') then
-    raise exception 'Invalid game type';
+    raise exception 'Invalid game type: %', _game;
   end if;
 
-  -- Jodi and Sangam can only be played before Open result
+  -- Jodi and Sangam can only be played before Open booking counter closes
   if _game in ('jodi','half_sangam','full_sangam') then
     _session := 'close';
-    if m.open_panna is not null then
-      raise exception 'Jodi & Sangam close after the Open result is declared';
-    end if;
-    if m.close_time > m.open_time and now_t >= m.open_time then
-      raise exception 'Open session has closed at %', to_char(m.open_time, 'HH12:MI AM');
+    if m.open_panna is not null or open_passed then
+      raise exception 'Jodi & Sangam booking closed (% Open counter closed at %)', m.name, to_char((m.open_time - interval '10 minutes')::time, 'HH12:MI AM');
     end if;
   end if;
 
@@ -46,13 +65,10 @@ begin
     raise exception 'Invalid session';
   end if;
 
-  -- If user chose 'open' session, verify open result not yet declared & time is before open_time
+  -- Open session bet check
   if _session = 'open' then
-    if m.open_panna is not null then
-      raise exception 'Open result already declared';
-    end if;
-    if m.close_time > m.open_time and now_t >= m.open_time then
-      raise exception 'Open session has closed at %', to_char(m.open_time, 'HH12:MI AM');
+    if m.open_panna is not null or open_passed then
+      raise exception 'Open session booking has closed for % (counter closed at %). Please play Close session.', m.name, to_char((m.open_time - interval '10 minutes')::time, 'HH12:MI AM');
     end if;
   end if;
 
@@ -81,19 +97,22 @@ begin
   return bal;
 end $$;
 
--- 2. ADD POPULAR REAL-WORLD BAZAR MARKETS (From DPBOSS)
--- Delete placeholder dummy markets first
-delete from public.markets;
-
--- Insert real popular DPBoss markets
+-- 2. INSERT / UPSERT REAL POPULAR DPBOSS MARKETS (Verified Official Timings)
 insert into public.markets(name, open_time, close_time, sort_order) values
- ('TIME BAZAR', '13:00', '14:00', 1),
- ('MADHUR DAY', '13:30', '14:30', 2),
- ('MILAN DAY', '15:00', '17:00', 3),
- ('KALYAN', '16:15', '18:15', 4),
- ('SRIDEVI NIGHT', '19:00', '20:00', 5),
- ('MADHUR NIGHT', '20:30', '22:30', 6),
- ('MILAN NIGHT', '21:00', '23:00', 7),
- ('KALYAN NIGHT', '21:25', '23:30', 8),
- ('RAJDHANI NIGHT', '21:35', '23:45', 9),
- ('MAIN BAZAR', '21:40', '00:05', 10);
+ ('MILAN MORNING', '10:30:00', '11:30:00', 1),
+ ('SRIDEVI', '11:35:00', '12:35:00', 2),
+ ('PADMAVATI', '11:40:00', '12:40:00', 3),
+ ('KALYAN MORNING', '11:59:00', '12:59:00', 4),
+ ('TIME BAZAR', '13:05:00', '14:05:00', 5),
+ ('MADHUR DAY', '13:30:00', '14:30:00', 6),
+ ('MILAN DAY', '15:05:00', '17:05:00', 7),
+ ('RAJDHANI DAY', '15:15:00', '17:15:00', 8),
+ ('KALYAN', '15:45:00', '17:45:00', 9),
+ ('SRIDEVI NIGHT', '19:15:00', '20:15:00', 10),
+ ('PADMAVATI NIGHT', '19:45:00', '20:45:00', 11),
+ ('MADHUR NIGHT', '20:30:00', '22:30:00', 12),
+ ('MILAN NIGHT', '21:05:00', '23:05:00', 13),
+ ('RAJDHANI NIGHT', '21:35:00', '23:45:00', 14),
+ ('KALYAN NIGHT', '21:40:00', '23:40:00', 15),
+ ('MAIN BAZAR', '22:00:00', '00:10:00', 16)
+on conflict do nothing;

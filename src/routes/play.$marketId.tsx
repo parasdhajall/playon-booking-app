@@ -26,7 +26,7 @@ import {
 } from "@/lib/thermalPrinter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProfile, useTodayExpense } from "@/hooks/useAuth";
-import { GAMES, PLAYABLE, type GameType, fmtTime, resultLabel, isOpenPast, isClosePast, getPlayerDisplayName, canMarketDeclareOpen, isMarketScheduledToday } from "@/lib/matka";
+import { GAMES, PLAYABLE, type GameType, fmtTime, fmtBookingClose, resultLabel, isOpenPast, isClosePast, getPlayerDisplayName, canMarketDeclareOpen, isMarketScheduledToday } from "@/lib/matka";
 import {
   SINGLE_PANNA_BY_ANK,
   DOUBLE_PANNA_BY_ANK,
@@ -294,7 +294,7 @@ function PlayPage() {
 
   const handleGameChange = (newGame: GameType) => {
     if (openClosed && GAMES[newGame].closeOnly) {
-      toast.error(`${GAMES[newGame].label} is closed because Open timing (${fmtTime(m?.open_time || "")}) has passed.`);
+      toast.error(`${GAMES[newGame].label} booking is closed (Open counter closed at ${fmtBookingClose(m?.open_time || "")}, 10 min before result).`);
       return;
     }
     setGame(newGame);
@@ -505,7 +505,7 @@ function PlayPage() {
       return false;
     }
     if (marketClosed) {
-      toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
+      toast.error(`Market booking has closed for today (${m?.name} counter closed at ${fmtBookingClose(m?.close_time || "")})`);
       return false;
     }
 
@@ -557,7 +557,7 @@ function PlayPage() {
   // Add Single / Panna / Sangam to Bucket
   const handleSingleAddToBucket = (): boolean => {
     if (marketClosed) {
-      toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
+      toast.error(`Market booking has closed for today (${m?.name} counter closed at ${fmtBookingClose(m?.close_time || "")})`);
       return false;
     }
 
@@ -592,12 +592,12 @@ function PlayPage() {
     }
 
     if (effSession === "open" && openClosed) {
-      toast.error(`Open session has closed for ${m?.name} (${fmtTime(m?.open_time || "")}).`);
+      toast.error(`Open session booking has closed for ${m?.name} (${fmtBookingClose(m?.open_time || "")}). Please play Close session.`);
       return false;
     }
 
     if (g.closeOnly && openClosed) {
-      toast.error(`${g.label} can only be played before Open timing.`);
+      toast.error(`${g.label} booking is closed (Open counter closed at ${fmtBookingClose(m?.open_time || "")}, 10 min before result).`);
       return false;
     }
 
@@ -629,11 +629,11 @@ function PlayPage() {
   // Add Multi-selected Pannas to Bucket
   const handleAddPannasToBucket = (): boolean => {
     if (marketClosed) {
-      toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
+      toast.error(`Market booking has closed for today (${m?.name} counter closed at ${fmtBookingClose(m?.close_time || "")})`);
       return false;
     }
     if (effSession === "open" && openClosed) {
-      toast.error(`Open session has closed for ${m?.name} (${fmtTime(m?.open_time || "")}).`);
+      toast.error(`Open session booking has closed for ${m?.name} (${fmtBookingClose(m?.open_time || "")}).`);
       return false;
     }
     if (selectedPannas.length === 0) {
@@ -666,11 +666,11 @@ function PlayPage() {
   // Add Jodi Bulk to Bucket
   const handleAddJodiBulkToBucket = (): boolean => {
     if (marketClosed) {
-      toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
+      toast.error(`Market booking has closed for today (${m?.name} counter closed at ${fmtBookingClose(m?.close_time || "")})`);
       return false;
     }
     if (openClosed) {
-      toast.error(`Jodi Bulk is closed because Open timing (${fmtTime(m?.open_time || "")}) has passed.`);
+      toast.error(`Jodi Bulk is closed because Open booking (${fmtBookingClose(m?.open_time || "")}) has closed.`);
       return false;
     }
     if (selectedJodis.length === 0) {
@@ -703,11 +703,11 @@ function PlayPage() {
   // Add Ank Bulk to Bucket (Single Digit)
   const handleAddAnkBulkToBucket = (): boolean => {
     if (marketClosed) {
-      toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
+      toast.error(`Market booking has closed for today (${m?.name} counter closed at ${fmtBookingClose(m?.close_time || "")})`);
       return false;
     }
     if (effSession === "open" && openClosed) {
-      toast.error(`Open session has closed for ${m?.name} (${fmtTime(m?.open_time || "")}).`);
+      toast.error(`Open session booking has closed for ${m?.name} (${fmtBookingClose(m?.open_time || "")}).`);
       return false;
     }
     if (selectedAnks.length === 0) {
@@ -782,11 +782,11 @@ function PlayPage() {
 
   const handleAddFamilyToBucket = (): boolean => {
     if (marketClosed) {
-      toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
+      toast.error(`Market booking has closed for today (${m?.name} counter closed at ${fmtBookingClose(m?.close_time || "")})`);
       return false;
     }
     if (effSession === "open" && openClosed) {
-      toast.error(`Open session has closed for ${m?.name} (${fmtTime(m?.open_time || "")}).`);
+      toast.error(`Open session booking has closed for ${m?.name} (${fmtBookingClose(m?.open_time || "")}).`);
       return false;
     }
     if (!activeFamily || selectedFamilyPannas.length === 0) {
@@ -861,11 +861,11 @@ function PlayPage() {
 
   const handleAddJodiFamilyToBucket = (): boolean => {
     if (marketClosed) {
-      toast.error(`Market has closed for today (${m?.name} closed at ${fmtTime(m?.close_time || "")})`);
+      toast.error(`Market booking has closed for today (${m?.name} counter closed at ${fmtBookingClose(m?.close_time || "")})`);
       return false;
     }
     if (openClosed) {
-      toast.error(`Jodi games are closed because Open timing (${fmtTime(m?.open_time || "")}) has passed.`);
+      toast.error(`Jodi games are closed because Open booking (${fmtBookingClose(m?.open_time || "")}) has closed.`);
       return false;
     }
     if (!activeJodiFamily || selectedFamilyJodis.length === 0) {
@@ -1170,8 +1170,11 @@ function PlayPage() {
 
         {/* Timing, Date and Agent Info */}
         <div className="mt-2.5 flex items-center justify-between text-[11px] text-muted-foreground border-t pt-2 flex-wrap gap-2">
-          <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3 text-primary" /> {fmtTime(m.open_time)} – {fmtTime(m.close_time)}
+          <span className="flex items-center gap-1" title={`Draw Result: ${fmtTime(m.open_time)} - ${fmtTime(m.close_time)}`}>
+            <Clock className="h-3 w-3 text-primary" /> Result: {fmtTime(m.open_time)} – {fmtTime(m.close_time)}
+          </span>
+          <span className="flex items-center gap-1 font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px]" title="Booking counters close strictly 10 minutes before result">
+            <Lock className="h-2.5 w-2.5" /> Closes: {fmtBookingClose(m.open_time)} (O) / {fmtBookingClose(m.close_time)} (C)
           </span>
           {user && (
             <span className="flex items-center gap-1 font-semibold text-gold" title="Logged in player/agent">
@@ -1251,11 +1254,11 @@ function PlayPage() {
         {/* Market / Session Timing Alerts */}
         {marketClosed ? (
           <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-xs font-semibold text-destructive">
-            ⛔ Market Closed for today ({fmtTime(m.close_time)}). New bets cannot be placed.
+            ⛔ Booking Closed for today ({fmtBookingClose(m.close_time)} - 10 min before {fmtTime(m.close_time)} result). New bets cannot be placed.
           </div>
         ) : openClosed ? (
           <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-xs font-medium text-amber-500">
-            ⏰ Open Session has closed ({fmtTime(m.open_time)} passed). Playing on <strong>CLOSE Session</strong> until {fmtTime(m.close_time)}.
+            ⏰ Open Session Booking Closed ({fmtBookingClose(m.open_time)} passed). Playing on <strong>CLOSE Session</strong> until {fmtBookingClose(m.close_time)}.
           </div>
         ) : null}
 
@@ -1276,7 +1279,7 @@ function PlayPage() {
                   : "text-muted-foreground hover:text-foreground"
               } ${openClosed ? "opacity-40 cursor-not-allowed bg-muted/40 line-through" : ""}`}
             >
-              {m.open_panna ? "OPEN (Declared)" : openClosed ? `OPEN (Closed)` : `OPEN (${fmtTime(m.open_time)})`}
+              {m.open_panna ? "OPEN (Declared)" : openClosed ? `OPEN (Closed)` : `OPEN (Closes ${fmtBookingClose(m.open_time)})`}
             </button>
 
             <button
@@ -1293,7 +1296,7 @@ function PlayPage() {
                   : "text-muted-foreground hover:text-foreground"
               } ${marketClosed ? "opacity-40 cursor-not-allowed" : ""}`}
             >
-              CLOSE ({fmtTime(m.close_time)})
+              CLOSE (Closes {fmtBookingClose(m.close_time)})
             </button>
           </div>
         )}

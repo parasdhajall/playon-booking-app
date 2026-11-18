@@ -122,15 +122,15 @@ begin
   select * into m from public.markets where id=_market;
   if m.id is null or not m.active then raise exception 'Market closed'; end if;
   
-  -- Time check in IST
+  -- Time check in IST with 10-Minute Buffer Rule (Booking counters close 10 min before result)
   now_t := (now() at time zone 'Asia/Kolkata')::time;
   is_cross := (m.close_time <= m.open_time);
 
-  -- Has Open passed?
+  -- Has Open booking closed? (10-minute buffer before Open result)
   if not is_cross then
-    open_passed := (now_t >= m.open_time);
+    open_passed := (now_t >= (m.open_time - interval '10 minutes')::time);
   else
-    open_passed := (now_t >= m.open_time or now_t < m.close_time);
+    open_passed := (now_t >= (m.open_time - interval '10 minutes')::time or now_t < '06:00:00'::time);
   end if;
 
   -- Self-healing check: if open session hasn't arrived today, any result is leftover from previous day
@@ -140,16 +140,20 @@ begin
     m.close_panna := null;
   end if;
 
-  -- Has Close passed?
+  -- Has Close booking closed? (10-minute buffer before Close result)
   if not is_cross then
-    close_passed := (now_t >= m.close_time);
+    close_passed := (now_t >= (m.close_time - interval '10 minutes')::time);
   else
-    -- Overnight market: closed between 00:05 and 06:00 AM
-    close_passed := (now_t >= m.close_time and now_t < '06:00:00'::time);
+    -- Overnight market (e.g. 22:00 to 00:10): booking closes at 00:00 and stays closed until 06:00 AM
+    if (m.close_time - interval '10 minutes')::time < m.open_time then
+      close_passed := (now_t >= (m.close_time - interval '10 minutes')::time and now_t < '06:00:00'::time);
+    else
+      close_passed := (now_t >= (m.close_time - interval '10 minutes')::time or now_t < '06:00:00'::time);
+    end if;
   end if;
 
   if m.close_panna is not null or close_passed then
-    raise exception 'Market has closed for today (% closed at %)', m.name, to_char(m.close_time, 'HH12:MI AM');
+    raise exception 'Market booking has closed for today (% counter closed at %)', m.name, to_char((m.close_time - interval '10 minutes')::time, 'HH12:MI AM');
   end if;
 
   if _game not in ('single','jodi','single_panna','double_panna','triple_panna','half_sangam','full_sangam') then
@@ -352,14 +356,15 @@ begin
   select * into m from public.markets where id=_market;
   if m.id is null or not m.active then raise exception 'Market closed'; end if;
 
+  -- Time check in IST with 10-Minute Buffer Rule (Booking counters close 10 min before result)
   now_t := (now() at time zone 'Asia/Kolkata')::time;
   is_cross := (m.close_time <= m.open_time);
 
-  -- Has Open passed?
+  -- Has Open booking closed? (10-minute buffer before Open result)
   if not is_cross then
-    open_passed := (now_t >= m.open_time);
+    open_passed := (now_t >= (m.open_time - interval '10 minutes')::time);
   else
-    open_passed := (now_t >= m.open_time or now_t < m.close_time);
+    open_passed := (now_t >= (m.open_time - interval '10 minutes')::time or now_t < '06:00:00'::time);
   end if;
 
   -- Self-healing check: if open session hasn't arrived today, any result is leftover from previous day
@@ -369,16 +374,20 @@ begin
     m.close_panna := null;
   end if;
 
-  -- Has Close passed?
+  -- Has Close booking closed? (10-minute buffer before Close result)
   if not is_cross then
-    close_passed := (now_t >= m.close_time);
+    close_passed := (now_t >= (m.close_time - interval '10 minutes')::time);
   else
-    -- Overnight market: closed between 00:05 and 06:00 AM
-    close_passed := (now_t >= m.close_time and now_t < '06:00:00'::time);
+    -- Overnight market (e.g. 22:00 to 00:10): booking closes at 00:00 and stays closed until 06:00 AM
+    if (m.close_time - interval '10 minutes')::time < m.open_time then
+      close_passed := (now_t >= (m.close_time - interval '10 minutes')::time and now_t < '06:00:00'::time);
+    else
+      close_passed := (now_t >= (m.close_time - interval '10 minutes')::time or now_t < '06:00:00'::time);
+    end if;
   end if;
 
   if m.close_panna is not null or close_passed then
-    raise exception 'Market has closed for today (% closed at %)', m.name, to_char(m.close_time, 'HH12:MI AM');
+    raise exception 'Market booking has closed for today (% counter closed at %)', m.name, to_char((m.close_time - interval '10 minutes')::time, 'HH12:MI AM');
   end if;
 
   for bet_item in select * from jsonb_array_elements(_bets)

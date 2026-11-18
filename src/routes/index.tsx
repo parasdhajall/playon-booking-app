@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Clock, Play, History, Calendar, Lock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { fmtTime, resultLabel, marketStatus, canMarketDeclareOpen, isMarketOpen, isMarketScheduledToday } from "@/lib/matka";
+import { fmtTime, fmtBookingClose, resultLabel, marketStatus, canMarketDeclareOpen, isMarketOpen, isMarketScheduledToday } from "@/lib/matka";
 import { useAuth, useTodayExpense } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/")({
@@ -101,12 +101,14 @@ function Index() {
 
         {/* Bottom: Timing & Direct Play Button */}
         <div className="mt-2 space-y-3">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" /> Open: <strong className="text-foreground">{fmtTime(m.open_time)}</strong>
+          <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-1">
+            <span className="flex items-center gap-1" title={`Open Result: ${fmtTime(m.open_time)} | Counter Closes: ${fmtBookingClose(m.open_time)}`}>
+              <Clock className="h-3.5 w-3.5 text-primary" /> Open: <strong className="text-foreground">{fmtTime(m.open_time)}</strong>
+              <span className="text-[10px] text-amber-500 font-semibold" title="Booking counter closes 10 min before result">({fmtBookingClose(m.open_time)})</span>
             </span>
-            <span>
+            <span className="flex items-center gap-1" title={`Close Result: ${fmtTime(m.close_time)} | Counter Closes: ${fmtBookingClose(m.close_time)}`}>
               Close: <strong className="text-foreground">{fmtTime(m.close_time)}</strong>
+              <span className="text-[10px] text-amber-500 font-semibold" title="Booking counter closes 10 min before result">({fmtBookingClose(m.close_time)})</span>
             </span>
           </div>
 
