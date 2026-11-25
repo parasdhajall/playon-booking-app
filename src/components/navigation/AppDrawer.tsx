@@ -28,7 +28,6 @@ interface AppDrawerProps {
   onOpenAddFunds: () => void;
   onOpenWithdraw: () => void;
   onOpenPassbook: () => void;
-  onOpenGameRates: () => void;
 }
 
 export function AppDrawer({
@@ -37,7 +36,6 @@ export function AppDrawer({
   onOpenAddFunds,
   onOpenWithdraw,
   onOpenPassbook,
-  onOpenGameRates,
 }: AppDrawerProps) {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
@@ -195,20 +193,6 @@ export function AppDrawer({
                 </button>
               </>
             )}
-
-            <button
-              onClick={() => {
-                onOpenChange(false);
-                onOpenGameRates();
-              }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-secondary/60 text-foreground transition-colors text-left"
-            >
-              <div className="flex items-center gap-3">
-                <TrendingUp className="h-4 w-4 text-emerald-400" />
-                <span>Game Rates & Payouts</span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
-            </button>
 
             {/* Direct Android APK Download */}
             <a

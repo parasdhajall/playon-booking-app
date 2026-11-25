@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Phone, Lock, ArrowRight, ShieldCheck, User, UserPlus, KeyRound } from "lucide-react";
+import { Phone, Lock, ArrowRight, ShieldCheck, User, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -124,18 +124,6 @@ export function AuthPage() {
 
     toast.success("Account created successfully! Welcome to Playon777.");
     navigate({ to: "/" });
-  };
-
-  const fillQuickCreds = (userType: "admin" | "player") => {
-    if (userType === "admin") {
-      setMode("signin");
-      setLoginId("admin@playon.com");
-      setPassword("Password123!");
-    } else {
-      setMode("signin");
-      setLoginId("9876543210");
-      setPassword("Password123!");
-    }
   };
 
   return (
@@ -323,38 +311,8 @@ export function AuthPage() {
           </form>
         )}
 
-        {/* Quick Demo Credentials Autofill Helper */}
-        <div className="mt-5 rounded-xl border border-gold/30 bg-gold/5 p-3 space-y-2">
-          <div className="flex items-center justify-between text-[11px] font-bold text-gold">
-            <span className="flex items-center gap-1">
-              <KeyRound className="h-3.5 w-3.5" /> Quick Autofill Credentials:
-            </span>
-            <span className="text-[10px] text-muted-foreground">Tap to fill</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => fillQuickCreds("admin")}
-              className="flex flex-col items-start p-2 rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 text-left transition-colors cursor-pointer"
-            >
-              <span className="text-[11px] font-black text-gold">👑 Admin Account</span>
-              <span className="text-[10px] text-muted-foreground truncate w-full">admin@playon.com</span>
-              <span className="text-[9px] text-emerald-400 font-mono">Password123!</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => fillQuickCreds("player")}
-              className="flex flex-col items-start p-2 rounded-lg border border-border bg-card hover:bg-secondary text-left transition-colors cursor-pointer"
-            >
-              <span className="text-[11px] font-black text-foreground">👤 Player 1</span>
-              <span className="text-[10px] text-muted-foreground truncate w-full">9876543210</span>
-              <span className="text-[9px] text-emerald-400 font-mono">Password123!</span>
-            </button>
-          </div>
-        </div>
-
         {/* Security & Access Notice */}
-        <div className="mt-4 border-t pt-3 text-center">
+        <div className="mt-6 border-t pt-3 text-center">
           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
             256-bit Secure Private Network

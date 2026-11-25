@@ -22,7 +22,6 @@ import { AddFundsModal } from "@/components/wallet/AddFundsModal";
 import { WithdrawModal } from "@/components/wallet/WithdrawModal";
 import { PassbookModal } from "@/components/wallet/PassbookModal";
 import { AppDrawer } from "@/components/navigation/AppDrawer";
-import { GameRatesModal } from "@/components/modals/GameRatesModal";
 import { BottomNav } from "@/components/navigation/BottomNav";
 
 export function SiteHeader() {
@@ -35,7 +34,6 @@ export function SiteHeader() {
   const [addFundsOpen, setAddFundsOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [passbookOpen, setPassbookOpen] = useState(false);
-  const [gameRatesOpen, setGameRatesOpen] = useState(false);
 
   const playerName = user ? getPlayerDisplayName(user, profile) : "";
   const points = profile?.points ?? 0;
@@ -92,14 +90,6 @@ export function SiteHeader() {
                 </button>
               </>
             )}
-            <button
-              type="button"
-              onClick={() => setGameRatesOpen(true)}
-              className="flex items-center gap-1 hover:text-emerald-400 transition-colors cursor-pointer"
-            >
-              <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Game Rates</span>
-            </button>
 
             {profile?.isAdmin && (
               <Link
@@ -194,7 +184,6 @@ export function SiteHeader() {
         onOpenAddFunds={() => setAddFundsOpen(true)}
         onOpenWithdraw={() => setWithdrawOpen(true)}
         onOpenPassbook={() => setPassbookOpen(true)}
-        onOpenGameRates={() => setGameRatesOpen(true)}
       />
 
       {/* Fixed Mobile Bottom Navigation Dock */}
@@ -212,9 +201,6 @@ export function SiteHeader() {
         onOpenDeposit={() => setAddFundsOpen(true)}
         onOpenWithdraw={() => setWithdrawOpen(true)}
       />
-
-      {/* Game Rates Modal */}
-      <GameRatesModal open={gameRatesOpen} onOpenChange={setGameRatesOpen} />
     </>
   );
 }

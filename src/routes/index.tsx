@@ -12,7 +12,6 @@ import {
   BookOpen,
   History,
   AlertCircle,
-  BarChart2,
   TrendingUp,
   Sparkles,
   MessageCircle,
@@ -37,8 +36,6 @@ import { useAuth, useProfile, useTodayExpense } from "@/hooks/useAuth";
 import { AddFundsModal } from "@/components/wallet/AddFundsModal";
 import { WithdrawModal } from "@/components/wallet/WithdrawModal";
 import { PassbookModal } from "@/components/wallet/PassbookModal";
-import { MarketChartModal } from "@/components/modals/MarketChartModal";
-import { GameRatesModal } from "@/components/modals/GameRatesModal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -85,8 +82,6 @@ function Index() {
   const [addFundsOpen, setAddFundsOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [passbookOpen, setPassbookOpen] = useState(false);
-  const [gameRatesOpen, setGameRatesOpen] = useState(false);
-  const [selectedChartMarket, setSelectedChartMarket] = useState<{ id: string; name: string } | null>(null);
 
   const openMarkets = useMemo(
     () => (markets ? markets.filter((m) => isMarketOpen(m)).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) : []),
@@ -169,13 +164,12 @@ function Index() {
             </span>
           </div>
 
-          {/* DPSARA Dual Action Buttons */}
-          <div className="flex items-center gap-2 pt-1">
-            {/* 1. PLAY BUTTON */}
+          {/* Action Button */}
+          <div className="pt-1">
             {isOpen ? (
               <Button
                 asChild
-                className="flex-1 h-10 font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-md cursor-pointer"
+                className="w-full h-10 font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-md cursor-pointer"
                 size="default"
               >
                 <Link
@@ -190,26 +184,13 @@ function Index() {
             ) : (
               <Button
                 disabled
-                className="flex-1 h-10 font-bold rounded-xl opacity-60 cursor-not-allowed bg-muted text-muted-foreground text-xs uppercase"
+                className="w-full h-10 font-bold rounded-xl opacity-60 cursor-not-allowed bg-muted text-muted-foreground text-xs uppercase"
                 variant="secondary"
               >
                 <Lock className="h-3.5 w-3.5 mr-1.5" />
                 {!sched.isRunningToday ? `Closed (${sched.currentDayName} Off)` : done ? "Closed" : "Upcoming"}
               </Button>
             )}
-
-            {/* 2. CHART BUTTON */}
-            <Button
-              type="button"
-              variant="outline"
-              size="default"
-              onClick={() => setSelectedChartMarket({ id: m.id, name: m.name })}
-              className="h-10 px-3.5 rounded-xl border-gold/40 text-gold hover:bg-gold/15 font-bold text-xs gap-1.5 cursor-pointer shrink-0"
-              title={`View ${m.name} Panel & Jodi Chart`}
-            >
-              <BarChart2 className="h-4 w-4" />
-              <span>Chart</span>
-            </Button>
           </div>
         </div>
       </article>
@@ -296,16 +277,6 @@ function Index() {
                 <BookOpen className="h-3.5 w-3.5 text-gold" />
                 Passbook
               </Button>
-
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setGameRatesOpen(true)}
-                className="font-bold text-xs h-9 gap-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl cursor-pointer"
-              >
-                <Sparkles className="h-3.5 w-3.5 text-gold" />
-                Game Rates
-              </Button>
             </div>
           </div>
         </section>
@@ -353,15 +324,8 @@ function Index() {
         </div>
 
         <div className="flex items-center gap-1.5 text-xs">
-          <button
-            onClick={() => setGameRatesOpen(true)}
-            className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline cursor-pointer bg-gold/10 px-2.5 py-1 rounded-lg border border-gold/30"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-gold" />
-            <span>Rates Chart</span>
-          </button>
           <a
-            href="https://wa.me/918143175017?text=Hello%20PLAYON%20Support"
+            href="https://wa.me/918143175017?text=Hello%20Playon777%20Support"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:underline cursor-pointer bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30"
@@ -404,14 +368,6 @@ function Index() {
         onOpenDeposit={() => setAddFundsOpen(true)}
         onOpenWithdraw={() => setWithdrawOpen(true)}
       />
-
-      {/* Market Chart & Game Rates Modals */}
-      <MarketChartModal
-        market={selectedChartMarket}
-        open={!!selectedChartMarket}
-        onOpenChange={(open) => !open && setSelectedChartMarket(null)}
-      />
-      <GameRatesModal open={gameRatesOpen} onOpenChange={setGameRatesOpen} />
     </main>
   );
 }
