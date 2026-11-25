@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Phone, Lock, ArrowRight, ShieldCheck, Sparkles, LockKeyhole } from "lucide-react";
+import { Phone, Lock, ArrowRight, ShieldCheck, User, UserPlus, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,10 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign In — PlayOn" },
-      { name: "description", content: "Sign in to your authorized PlayOn account." },
-      { property: "og:title", content: "Sign In — PlayOn" },
-      { property: "og:description", content: "Sign in with your mobile number." },
+      { title: "Sign In & Register — PLAYON" },
+      { name: "description", content: "Sign in or register your PLAYON account." },
+      { property: "og:title", content: "Sign In — PLAYON" },
+      { property: "og:description", content: "Sign in with your mobile number to PLAYON." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -22,18 +22,28 @@ export const Route = createFileRoute("/auth")({
 });
 
 export function AuthPage() {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
+  const [signUpName, setSignUpName] = useState("");
+  const [signUpPhone, setSignUpPhone] = useState("");
+  const [signUpPassword, setSignUpPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
 
-  // Helper to format phone into internal auth credential
+  // Helper to format input into valid auth email
   const formatAuthEmail = (raw: string) => {
     const trimmed = raw.trim();
+    if (trimmed.toLowerCase() === "admin") {
+      return "admin@playon.com";
+    }
     if (trimmed.includes("@")) {
       return trimmed.toLowerCase();
     }
     const digits = trimmed.replace(/\D/g, "");
+    if (!digits) {
+      return `${trimmed.toLowerCase()}@playon.app`;
+    }
     return `${digits}@playon.app`;
   };
 
@@ -41,7 +51,7 @@ export function AuthPage() {
     e.preventDefault();
     const cleanId = loginId.trim();
     if (!cleanId) {
-      toast.error("Please enter your 10-digit mobile number or admin email");
+      toast.error("Please enter your 10-digit mobile number or admin username");
       return;
     }
     if (!password) {
@@ -51,7 +61,7 @@ export function AuthPage() {
 
     setBusy(true);
     const email = formatAuthEmail(cleanId);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -62,112 +72,289 @@ export function AuthPage() {
         error.message.toLowerCase().includes("invalid login credentials") ||
         error.message.toLowerCase().includes("invalid_grant")
       ) {
-        toast.error("Invalid login credentials. Please verify your mobile/email and password.");
+        toast.error("Invalid login credentials. Please check your username/mobile and password.");
       } else {
         toast.error(error.message);
       }
       return;
     }
 
-    toast.success("Welcome back!");
+    toast.success("Welcome back to PLAYON!");
+    if (email.includes("admin")) {
+      navigate({ to: "/admin" });
+    } else {
+      navigate({ to: "/" });
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPhone = signUpPhone.replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    if (!signUpName.trim()) {
+      toast.error("Please enter your name");
+      return;
+    }
+    if (signUpPassword.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
+    setBusy(true);
+    const email = `${cleanPhone}@playon.app`;
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: signUpPassword,
+      options: {
+        data: {
+          display_name: signUpName.trim(),
+          phone: cleanPhone,
+        },
+      },
+    });
+    setBusy(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Account created successfully! Welcome to PLAYON.");
     navigate({ to: "/" });
   };
 
+  const fillQuickCreds = (userType: "admin" | "player") => {
+    if (userType === "admin") {
+      setMode("signin");
+      setLoginId("admin@playon.com");
+      setPassword("Password123!");
+    } else {
+      setMode("signin");
+      setLoginId("9876543210");
+      setPassword("Password123!");
+    }
+  };
+
   return (
-    <main className="mx-auto max-w-sm px-4 py-12">
+    <main className="mx-auto max-w-sm px-4 py-8 sm:py-12">
       <div className="rounded-2xl border bg-card p-6 shadow-glow">
         {/* Header */}
-        <div className="text-center space-y-1 mb-6">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/15 text-gold border border-gold/40 mb-2 shadow-inner">
-            <LockKeyhole className="h-6 w-6" />
+        <div className="text-center space-y-2 mb-5">
+          <div className="flex justify-center mb-1">
+            <span className="font-display text-3xl sm:text-4xl font-black tracking-wider text-gold drop-shadow-sm flex items-center gap-2">
+              <span className="inline-block h-8 w-8 rounded-xl bg-gold/20 border border-gold/40 text-gold text-center text-base font-black leading-8">
+                P
+              </span>
+              <span>PLAY<span className="text-foreground">ON</span></span>
+            </span>
           </div>
-          <h1 className="font-display text-4xl tracking-wider text-gold">
-            Authorized Sign In
+          <h1 className="font-display text-2xl sm:text-3xl tracking-wider text-gold">
+            {mode === "signin" ? "Authorized Sign In" : "New Player Registration"}
           </h1>
           <p className="text-xs text-muted-foreground">
-            Enter your authorized mobile number or admin email and password
+            {mode === "signin"
+              ? "Enter your 10-digit mobile number or admin credentials"
+              : "Register instant player account with mobile number"}
           </p>
         </div>
 
-        {/* Sign In Form */}
-        <form onSubmit={handleSignIn} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Mobile Number or Admin Email</Label>
-            <div className="relative flex items-center">
-              {/^\d*$/.test(loginId) && loginId.length <= 10 ? (
-                <>
-                  <div className="absolute left-3 flex items-center gap-1 text-xs font-bold text-muted-foreground border-r pr-2 pointer-events-none">
-                    <span>+91</span>
-                  </div>
-                  <Input
-                    type="text"
-                    placeholder="10-digit mobile number"
-                    value={loginId}
-                    onChange={(e) => setLoginId(e.target.value.trim())}
-                    className="pl-16 h-11 text-sm font-semibold tracking-wider rounded-xl font-mono"
-                    required
-                    autoFocus
-                  />
-                </>
+        {/* Tab Toggle: Sign In vs Sign Up */}
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary/80 p-1 mb-5 border">
+          <button
+            type="button"
+            onClick={() => setMode("signin")}
+            className={`py-2 text-xs font-bold rounded-lg transition-all ${
+              mode === "signin"
+                ? "bg-primary text-primary-foreground shadow"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("signup")}
+            className={`py-2 text-xs font-bold rounded-lg transition-all ${
+              mode === "signup"
+                ? "bg-primary text-primary-foreground shadow"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Create Account
+          </button>
+        </div>
+
+        {/* 1. SIGN IN FORM */}
+        {mode === "signin" ? (
+          <form onSubmit={handleSignIn} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Mobile Number or Admin Username</Label>
+              <div className="relative flex items-center">
+                {/^\d*$/.test(loginId) && loginId.length <= 10 && loginId.length > 0 ? (
+                  <>
+                    <div className="absolute left-3 flex items-center gap-1 text-xs font-bold text-muted-foreground border-r pr-2 pointer-events-none">
+                      <span>+91</span>
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="10-digit mobile number"
+                      value={loginId}
+                      onChange={(e) => setLoginId(e.target.value.trim())}
+                      className="pl-16 h-11 text-sm font-semibold tracking-wider rounded-xl font-mono"
+                      required
+                      autoFocus
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Phone className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Mobile number or admin"
+                      value={loginId}
+                      onChange={(e) => setLoginId(e.target.value.trim())}
+                      className="pl-9 h-11 text-sm font-semibold rounded-xl"
+                      required
+                      autoFocus
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Password</Label>
+              <div className="relative flex items-center">
+                <Lock className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-9 h-11 text-sm rounded-xl"
+                  required
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={busy}
+              className="w-full h-11 text-sm font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-2"
+            >
+              {busy ? (
+                "Signing in…"
               ) : (
                 <>
-                  <Phone className="absolute left-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Mobile number or admin email"
-                    value={loginId}
-                    onChange={(e) => setLoginId(e.target.value.trim())}
-                    className="pl-9 h-11 text-sm font-semibold rounded-xl"
-                    required
-                    autoFocus
-                  />
+                  Sign In to Play <ArrowRight className="h-4 w-4" />
                 </>
               )}
+            </Button>
+          </form>
+        ) : (
+          /* 2. SIGN UP / REGISTRATION FORM */
+          <form onSubmit={handleSignUp} className="space-y-3.5">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Your Full Name</Label>
+              <div className="relative flex items-center">
+                <User className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="e.g. Ramesh Kumar"
+                  value={signUpName}
+                  onChange={(e) => setSignUpName(e.target.value)}
+                  className="pl-9 h-11 text-sm rounded-xl"
+                  required
+                  autoFocus
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Password</Label>
-            <div className="relative flex items-center">
-              <Lock className="absolute left-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-9 h-11 text-sm rounded-xl"
-                required
-              />
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">10-Digit Mobile Number</Label>
+              <div className="relative flex items-center">
+                <div className="absolute left-3 flex items-center gap-1 text-xs font-bold text-muted-foreground border-r pr-2 pointer-events-none">
+                  <span>+91</span>
+                </div>
+                <Input
+                  type="tel"
+                  maxLength={10}
+                  placeholder="98XXXXXXXX"
+                  value={signUpPhone}
+                  onChange={(e) => setSignUpPhone(e.target.value.replace(/\D/g, ""))}
+                  className="pl-16 h-11 text-sm font-semibold tracking-wider rounded-xl font-mono"
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          <Button
-            type="submit"
-            disabled={busy}
-            className="w-full h-11 text-sm font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-2"
-          >
-            {busy ? (
-              "Signing in…"
-            ) : (
-              <>
-                Sign In to Play <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </Button>
-        </form>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Create Password</Label>
+              <div className="relative flex items-center">
+                <Lock className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={signUpPassword}
+                  onChange={(e) => setSignUpPassword(e.target.value)}
+                  className="pl-9 h-11 text-sm rounded-xl"
+                  minLength={6}
+                  required
+                />
+              </div>
+            </div>
 
-        {/* Security & Access Notice */}
-        <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4 text-center space-y-1.5">
-          <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-primary">
-            <ShieldCheck className="h-4 w-4 text-gold" />
-            <span>Authorized Access Only</span>
+            <Button
+              type="submit"
+              disabled={busy}
+              className="w-full h-11 text-sm font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-2"
+            >
+              {busy ? (
+                "Creating account…"
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4" /> Register & Play Now
+                </>
+              )}
+            </Button>
+          </form>
+        )}
+
+        {/* Quick Demo Credentials Autofill Helper */}
+        <div className="mt-5 rounded-xl border border-gold/30 bg-gold/5 p-3 space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-bold text-gold">
+            <span className="flex items-center gap-1">
+              <KeyRound className="h-3.5 w-3.5" /> Quick Autofill Credentials:
+            </span>
+            <span className="text-[10px] text-muted-foreground">Tap to fill</span>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            New player accounts are created and authorized strictly by the Administrator. If you do not have an account, please contact the operator to get access.
-          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => fillQuickCreds("admin")}
+              className="flex flex-col items-start p-2 rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 text-left transition-colors cursor-pointer"
+            >
+              <span className="text-[11px] font-black text-gold">👑 Admin Account</span>
+              <span className="text-[10px] text-muted-foreground truncate w-full">admin@playon.com</span>
+              <span className="text-[9px] text-emerald-400 font-mono">Password123!</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => fillQuickCreds("player")}
+              className="flex flex-col items-start p-2 rounded-lg border border-border bg-card hover:bg-secondary text-left transition-colors cursor-pointer"
+            >
+              <span className="text-[11px] font-black text-foreground">👤 Player 1</span>
+              <span className="text-[10px] text-muted-foreground truncate w-full">9876543210</span>
+              <span className="text-[9px] text-emerald-400 font-mono">Password123!</span>
+            </button>
+          </div>
         </div>
 
-        <div className="mt-5 border-t pt-3 text-center">
+        {/* Security & Access Notice */}
+        <div className="mt-4 border-t pt-3 text-center">
           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
             256-bit Secure Private Network

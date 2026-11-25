@@ -1,14 +1,14 @@
 {
-  "name": "PlayOn — Online Matka",
-  "short_name": "PlayOn",
-  "description": "Fast Online Matka & Number Markets with Live Results",
+  "name": "PLAYON — Online Matka Booking",
+  "short_name": "PLAYON",
+  "description": "Fast Online Matka & Number Markets with Live Results & Instant UPI Withdrawals",
   "start_url": "/",
   "id": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a1f17",
-  "theme_color": "#0f2e22",
+  "background_color": "#0d0e12",
+  "theme_color": "#E89B00",
   "categories": ["entertainment", "games"],
   "icons": [
     {
@@ -31,4 +31,3 @@
     }
   ]
 }
-

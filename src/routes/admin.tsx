@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -43,15 +43,16 @@ import { resultLabel, fmtTime, fmtBookingClose, marketStatus, fmtIST, toISTDateS
 import { AdminPlays } from "@/components/AdminPlays";
 import { AdminRiskHedging } from "@/components/AdminRiskHedging";
 import { AdminCommission } from "@/components/AdminCommission";
+import { AdminWalletManagement } from "@/components/admin/AdminWalletManagement";
 import { adminCreatePlayerAccount } from "@/lib/adminAuth";
 import { fetchRsbossLiveResults, type MarketLiveResult } from "@/lib/rsbossFetcher";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Management Panel — PlayOn" },
-      { name: "description", content: "Manage markets, live RSBoss results, declare results, view profit/loss, change user passwords and block accounts." },
-      { property: "og:title", content: "Admin Panel — PlayOn" },
+      { title: "Admin Management Panel — PLAYON" },
+      { name: "description", content: "PLAYON operator console. Manage markets, declare results, player bets, wallet requests and accounting." },
+      { property: "og:title", content: "Admin Panel — PLAYON" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -79,7 +80,7 @@ function Admin() {
   }, [markets]);
   const qc = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<"markets" | "plays" | "players" | "pnl" | "risk" | "commission">("markets");
+  const [activeTab, setActiveTab] = useState<"markets" | "plays" | "players" | "pnl" | "risk" | "commission" | "wallet">("markets");
   const [form, setForm] = useState({ name: "", open_time: "10:00", close_time: "11:00" });
   const [pannas, setPannas] = useState<Record<string, string>>({});
   const [times, setTimes] = useState<Record<string, { open_time: string; close_time: string }>>({});
@@ -710,8 +711,42 @@ function Admin() {
   });
 
   if (isLoading) return null;
+  if (!user) {
+    return (
+      <main className="mx-auto max-w-md px-4 py-16 text-center">
+        <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-4">
+          <Shield className="h-12 w-12 text-gold mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Admin Sign In Required</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Please sign in with your authorized administrator account to access the PLAYON Control Panel.
+          </p>
+          <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-11">
+            <Link to="/auth">Sign In as Admin</Link>
+          </Button>
+        </div>
+      </main>
+    );
+  }
   if (!profile?.isAdmin) {
-    return <main className="p-8 text-center text-muted-foreground">Access denied. Admins only.</main>;
+    return (
+      <main className="mx-auto max-w-md px-4 py-16 text-center">
+        <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-4">
+          <ShieldAlert className="h-12 w-12 text-destructive mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Access Denied</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Logged in as <strong>{user.email}</strong>, but this account does not have administrator privileges.
+          </p>
+          <div className="flex gap-2">
+            <Button asChild variant="outline" className="flex-1 rounded-xl">
+              <Link to="/">Back to Markets</Link>
+            </Button>
+            <Button asChild className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+              <Link to="/auth">Switch Account</Link>
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -719,10 +754,10 @@ function Admin() {
       {/* Admin Title & Tabs */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            <Shield className="h-3.5 w-3.5" /> Full Control
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/10 border border-gold/30 px-3 py-1 text-xs font-semibold text-gold">
+            <Shield className="h-3.5 w-3.5" /> PLAYON Official
           </span>
-          <h1 className="mt-1 font-display text-4xl tracking-wide text-gold">Master Admin Panel</h1>
+          <h1 className="mt-1 font-display text-4xl tracking-wide text-gold">PLAYON Control Panel</h1>
         </div>
 
         {/* Tab Navigation */}
@@ -777,6 +812,15 @@ function Admin() {
             }`}
           >
             Users & Security ({players?.length ?? 0})
+          </button>
+          <button
+            onClick={() => setActiveTab("wallet")}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+              activeTab === "wallet" ? "bg-emerald-600 text-white shadow" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Coins className="h-3.5 w-3.5 text-emerald-400" />
+            Wallet & UPI Requests
           </button>
         </div>
       </div>
@@ -1813,6 +1857,9 @@ function Admin() {
           </div>
         </section>
       )}
+
+      {/* TAB 5: WALLET & UPI DEPOSITS / WITHDRAWALS */}
+      {activeTab === "wallet" && <AdminWalletManagement />}
 
       {/* PASSWORD RESET MODAL */}
       {passwordModalUser && (

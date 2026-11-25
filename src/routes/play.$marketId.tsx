@@ -44,6 +44,8 @@ import {
   findFamilyByJodi,
   type JodiFamily,
 } from "@/lib/jodiFamilyData";
+import { ChipsSelector } from "@/components/betting/ChipsSelector";
+import { playTapSound, playChipSound, playCoinSpillSound } from "@/lib/soundEffects";
 
 // Memoized Row for Single Digit (Ank) Amount Inputs
 const AnkRowItem = memo(function AnkRowItem({
@@ -293,6 +295,7 @@ function PlayPage() {
   const effSession: "open" | "close" = g.closeOnly ? "close" : openClosed ? "close" : session;
 
   const handleGameChange = (newGame: GameType) => {
+    playTapSound();
     if (openClosed && GAMES[newGame].closeOnly) {
       toast.error(`${GAMES[newGame].label} booking is closed (Open counter closed at ${fmtBookingClose(m?.open_time || "")}, 10 min before result).`);
       return;
@@ -317,6 +320,7 @@ function PlayPage() {
   };
 
   const togglePanna = (p: string) => {
+    playTapSound();
     setSelectedPannas((prev) => {
       if (prev.includes(p)) {
         const next = prev.filter((x) => x !== p);
@@ -390,6 +394,7 @@ function PlayPage() {
   const totalPannaPoints = selectedPannas.reduce((sum, p) => sum + (pannaPoints[p] || 0), 0);
 
   const selectNumber = (num: string) => {
+    playTapSound();
     // Only one number selected at a time (toggle if tapped again)
     setSelectedNumber((prev) => (prev === num ? null : num));
   };
@@ -400,6 +405,7 @@ function PlayPage() {
 
   // Jodi Bulk helpers
   const toggleJodi = (jodi: string) => {
+    playTapSound();
     setSelectedJodis((prev) => {
       if (prev.includes(jodi)) {
         const next = prev.filter((x) => x !== jodi);
@@ -438,6 +444,7 @@ function PlayPage() {
 
   // Ank Bulk helpers (Single Digit)
   const toggleAnk = (digit: number) => {
+    playTapSound();
     setSelectedAnks((prev) => {
       if (prev.includes(digit)) {
         const next = prev.filter((x) => x !== digit);
@@ -534,6 +541,7 @@ function PlayPage() {
 
     const addedCount = newItems.length;
     const addedTotal = newItems.reduce((acc, x) => acc + x.points, 0);
+    playChipSound();
     toast.success(`🧺 Added ${addedCount} bet${addedCount > 1 ? "s" : ""} (₹${addedTotal}) to Bucket!`);
     return true;
   };
@@ -945,6 +953,8 @@ function PlayPage() {
         return;
       }
 
+      playCoinSpillSound();
+
       const placedCount = bucket.length;
       const placedTotal = totalBucketAmount;
 
@@ -1275,6 +1285,7 @@ function PlayPage() {
               disabled={openClosed || marketClosed}
               onClick={() => {
                 if (openClosed || marketClosed) return;
+                playTapSound();
                 setSession("open");
                 clearSelection();
               }}
@@ -1292,6 +1303,7 @@ function PlayPage() {
               disabled={marketClosed}
               onClick={() => {
                 if (marketClosed) return;
+                playTapSound();
                 setSession("close");
                 clearSelection();
               }}
@@ -2315,22 +2327,11 @@ function PlayPage() {
                 </div>
 
                 {/* Quick amount chips */}
-                <div className="flex gap-1 overflow-x-auto">
-                  {POINT_PRESETS.map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setPoints(amt)}
-                      className={`rounded-md px-2.5 py-1 text-xs font-semibold border transition-colors ${
-                        points === amt
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card hover:bg-secondary text-foreground"
-                      }`}
-                    >
-                      ₹{amt}
-                    </button>
-                  ))}
-                </div>
+                <ChipsSelector
+                  currentAmount={points}
+                  onSelectAmount={(amt) => setPoints(amt)}
+                  className="flex-1"
+                />
               </div>
 
               {activeJodiFamily && selectedFamilyJodis.length > 0 && (
@@ -2472,22 +2473,11 @@ function PlayPage() {
                 </div>
 
                 {/* Quick amount chips */}
-                <div className="flex gap-1 overflow-x-auto">
-                  {POINT_PRESETS.map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setPoints(amt)}
-                      className={`rounded-md px-2.5 py-1 text-xs font-semibold border transition-colors ${
-                        points === amt
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card hover:bg-secondary text-foreground"
-                      }`}
-                    >
-                      ₹{amt}
-                    </button>
-                  ))}
-                </div>
+                <ChipsSelector
+                  currentAmount={points}
+                  onSelectAmount={(amt) => setPoints(amt)}
+                  className="flex-1"
+                />
               </div>
 
               {activeFamily && selectedFamilyPannas.length > 0 && (
@@ -2629,22 +2619,11 @@ function PlayPage() {
                 </div>
 
                 {/* Quick amount chips */}
-                <div className="flex gap-1 overflow-x-auto">
-                  {POINT_PRESETS.map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setPoints(amt)}
-                      className={`rounded-md px-2.5 py-1 text-xs font-semibold border transition-colors ${
-                        points === amt
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card hover:bg-secondary text-foreground"
-                      }`}
-                    >
-                      ₹{amt}
-                    </button>
-                  ))}
-                </div>
+                <ChipsSelector
+                  currentAmount={points}
+                  onSelectAmount={(amt) => setPoints(amt)}
+                  className="flex-1"
+                />
               </div>
 
               {/* Potential Win Banner when selected */}

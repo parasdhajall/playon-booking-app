@@ -55,9 +55,9 @@
   --border: oklch(0.34 0.05 160);
   --input: oklch(0.34 0.05 160);
   --ring: oklch(0.82 0.15 85);
-  --gradient-gold: linear-gradient(135deg, oklch(0.86 0.15 90), oklch(0.72 0.16 65));
-  --gradient-felt: radial-gradient(ellipse at top, oklch(0.27 0.06 160), oklch(0.15 0.03 160) 70%);
-  --shadow-glow: 0 10px 40px -12px color-mix(in oklab, var(--primary) 45%, transparent);
+  --gradient-gold: linear-gradient(135deg, #FFC107 0%, #FFA000 45%, #E89B00 100%);
+  --gradient-felt: radial-gradient(ellipse at top, #1A1C24, #0D0E12 75%);
+  --shadow-glow: 0 10px 40px -12px rgba(232, 155, 0, 0.45);
 }
 
 @layer base {

@@ -1,19 +1,50 @@
-import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Clock, Play, History, Calendar, Lock, AlertCircle } from "lucide-react";
+import { useState, useMemo } from "react";
+import {
+  Calendar,
+  Clock,
+  Play,
+  Lock,
+  Wallet,
+  PlusCircle,
+  ArrowUpRight,
+  BookOpen,
+  History,
+  AlertCircle,
+  BarChart2,
+  TrendingUp,
+  Sparkles,
+  MessageCircle,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { fmtTime, fmtBookingClose, getEffectiveTimes, resultLabel, marketStatus, canMarketDeclareOpen, isMarketOpen, isMarketScheduledToday } from "@/lib/matka";
-import { useAuth, useTodayExpense } from "@/hooks/useAuth";
+import {
+  resultLabel,
+  isMarketOpen,
+  marketStatus,
+  fmtTime,
+  fmtBookingClose,
+  canMarketDeclareOpen,
+  isMarketScheduledToday,
+  getEffectiveTimes,
+} from "@/lib/matka";
+import { useAuth, useProfile, useTodayExpense } from "@/hooks/useAuth";
+import { AddFundsModal } from "@/components/wallet/AddFundsModal";
+import { WithdrawModal } from "@/components/wallet/WithdrawModal";
+import { PassbookModal } from "@/components/wallet/PassbookModal";
+import { MarketChartModal } from "@/components/modals/MarketChartModal";
+import { GameRatesModal } from "@/components/modals/GameRatesModal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PlayOn — Online Matka Play" },
-      { name: "description", content: "Play daily online number markets. Live results and instant plays." },
-      { property: "og:title", content: "PlayOn — Online Matka Play" },
-      { property: "og:description", content: "Play daily number markets. Instant play." },
+      { title: "PLAYON — Online Matka & Live Bazar Play" },
+      { name: "description", content: "PLAYON — Play daily online matka & number markets. Live DPBoss results and instant wallet plays." },
+      { property: "og:title", content: "PLAYON — Online Matka & Live Bazar Play" },
+      { property: "og:description", content: "PLAYON Official Online Booking. Live results and instant plays." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -46,7 +77,14 @@ export const marketsQuery = {
 function Index() {
   const { data: markets, isLoading } = useQuery(marketsQuery);
   const { user } = useAuth();
+  const { data: profile } = useProfile(user?.id);
   const { data: todayExp } = useTodayExpense(user?.id);
+
+  const [addFundsOpen, setAddFundsOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [passbookOpen, setPassbookOpen] = useState(false);
+  const [gameRatesOpen, setGameRatesOpen] = useState(false);
+  const [selectedChartMarket, setSelectedChartMarket] = useState<{ id: string; name: string } | null>(null);
 
   const openMarkets = useMemo(
     () => (markets ? markets.filter((m) => isMarketOpen(m)).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) : []),
@@ -60,7 +98,6 @@ function Index() {
   const renderMarketCard = (m: any) => {
     const sched = isMarketScheduledToday(m.name);
     const canOpen = canMarketDeclareOpen(m);
-    // If market's open session for today hasn't arrived yet, any open/close panna is from yesterday
     const displayOpen = canOpen ? m.open_panna : null;
     const displayClose = canOpen ? m.close_panna : null;
 
@@ -68,118 +105,249 @@ function Index() {
     const done = !canOpen ? false : !!displayClose;
     const isOpen = st.state === "open" && !done && sched.isRunningToday;
     const badge = isOpen
-      ? "bg-success/20 text-success border-success/30"
-      : "bg-destructive/20 text-destructive border-destructive/30";
+      ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+      : "bg-destructive/15 text-destructive border-destructive/30";
+
+    const eff = getEffectiveTimes(m);
 
     return (
       <article
         key={m.id}
-        className="relative flex flex-col justify-between overflow-hidden rounded-xl border bg-card p-5 transition-shadow hover:shadow-md"
+        className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md ${
+          isOpen
+            ? "border-gold/40 bg-gradient-to-b from-card via-card to-gold/5"
+            : "border-border/60 bg-card/60 opacity-90"
+        } p-4 sm:p-5`}
       >
         {/* Header: Market Name and Live Status */}
         <div>
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="font-display text-2xl tracking-wide text-foreground">{m.name}</h3>
+              <h3 className="font-display text-2xl sm:text-3xl tracking-wide text-foreground font-bold">
+                {m.name}
+              </h3>
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground mt-0.5">
-                <Calendar className="h-3 w-3 text-primary/70" /> {sched.scheduleLabel}
+                <Calendar className="h-3 w-3 text-gold/80" /> {sched.scheduleLabel}
               </span>
             </div>
-            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge}`}>
-              {isOpen && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />}
-              {!sched.isRunningToday ? `🚫 ${st.note}` : done ? "Results Declared" : st.note}
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold ${badge}`}>
+              {isOpen && <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />}
+              {!sched.isRunningToday ? `🚫 ${st.note}` : done ? "Result Declared" : st.note}
             </span>
           </div>
 
-          {/* Main Digits Display */}
-          <div className="my-4 rounded-lg bg-background/60 py-3 text-center">
-            <p className="font-display text-4xl tracking-widest text-primary md:text-5xl">
+          {/* DPSARA Style Main Digits Display Box */}
+          <div className="my-3.5 rounded-xl border border-gold/30 bg-background/80 py-3 px-2 text-center shadow-inner relative overflow-hidden">
+            <p className="font-display text-4xl tracking-widest text-gold md:text-5xl font-black drop-shadow-sm">
               {resultLabel(displayOpen, displayClose)}
             </p>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground/80 block mt-0.5">
+              {displayOpen ? "Live Declared Result" : "Today's Result"}
+            </span>
           </div>
         </div>
 
-        {/* Bottom: Timing & Direct Play Button */}
-        <div className="mt-2 space-y-3">
-          {(() => {
-            const eff = getEffectiveTimes(m);
-            return (
-              <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-1">
-                <span className="flex items-center gap-1" title={`Open Result: ${fmtTime(eff.open_time)} | Counter Closes: ${fmtBookingClose(eff.open_time)}`}>
-                  <Clock className="h-3.5 w-3.5 text-primary" /> Open: <strong className="text-foreground">{fmtTime(eff.open_time)}</strong>
-                  <span className="text-[10px] text-amber-500 font-semibold" title="Booking counter closes 10 min before result">({fmtBookingClose(eff.open_time)})</span>
-                </span>
-                <span className="flex items-center gap-1" title={`Close Result: ${fmtTime(eff.close_time)} | Counter Closes: ${fmtBookingClose(eff.close_time)}`}>
-                  Close: <strong className="text-foreground">{fmtTime(eff.close_time)}</strong>
-                  <span className="text-[10px] text-amber-500 font-semibold" title="Booking counter closes 10 min before result">({fmtBookingClose(eff.close_time)})</span>
-                </span>
-              </div>
-            );
-          })()}
+        {/* Bottom: Timing & Dual Action Buttons (Play & Chart) */}
+        <div className="mt-1 space-y-3">
+          <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-1 px-0.5">
+            <span
+              className="flex items-center gap-1"
+              title={`Open Result: ${fmtTime(eff.open_time)} | Counter Closes: ${fmtBookingClose(eff.open_time)}`}
+            >
+              <Clock className="h-3.5 w-3.5 text-gold" /> Open:{" "}
+              <strong className="text-foreground font-mono">{fmtTime(eff.open_time)}</strong>
+              <span className="text-[10px] text-amber-400 font-semibold">({fmtBookingClose(eff.open_time)})</span>
+            </span>
+            <span
+              className="flex items-center gap-1"
+              title={`Close Result: ${fmtTime(eff.close_time)} | Counter Closes: ${fmtBookingClose(eff.close_time)}`}
+            >
+              Close: <strong className="text-foreground font-mono">{fmtTime(eff.close_time)}</strong>
+              <span className="text-[10px] text-amber-400 font-semibold">({fmtBookingClose(eff.close_time)})</span>
+            </span>
+          </div>
 
-          {/* Direct Play Button */}
-          {isOpen ? (
+          {/* DPSARA Dual Action Buttons */}
+          <div className="flex items-center gap-2 pt-1">
+            {/* 1. PLAY BUTTON */}
+            {isOpen ? (
+              <Button
+                asChild
+                className="flex-1 h-10 font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-md cursor-pointer"
+                size="default"
+              >
+                <Link
+                  to="/play/$marketId"
+                  params={{ marketId: m.id }}
+                  className="flex items-center justify-center gap-2 tracking-wide text-xs sm:text-sm uppercase"
+                >
+                  <Play className="h-4 w-4 fill-current text-black" />
+                  Play Game
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                disabled
+                className="flex-1 h-10 font-bold rounded-xl opacity-60 cursor-not-allowed bg-muted text-muted-foreground text-xs uppercase"
+                variant="secondary"
+              >
+                <Lock className="h-3.5 w-3.5 mr-1.5" />
+                {!sched.isRunningToday ? `Closed (${sched.currentDayName} Off)` : done ? "Closed" : "Upcoming"}
+              </Button>
+            )}
+
+            {/* 2. CHART BUTTON */}
             <Button
-              asChild
-              className="w-full font-semibold shadow-sm"
-              variant="default"
+              type="button"
+              variant="outline"
+              size="default"
+              onClick={() => setSelectedChartMarket({ id: m.id, name: m.name })}
+              className="h-10 px-3.5 rounded-xl border-gold/40 text-gold hover:bg-gold/15 font-bold text-xs gap-1.5 cursor-pointer shrink-0"
+              title={`View ${m.name} Panel & Jodi Chart`}
             >
-              <Link to="/play/$marketId" params={{ marketId: m.id }} className="flex items-center justify-center gap-2">
-                <Play className="h-4 w-4 fill-current" />
-                Play Now
-              </Link>
+              <BarChart2 className="h-4 w-4" />
+              <span>Chart</span>
             </Button>
-          ) : (
-            <Button
-              disabled
-              className="w-full font-semibold shadow-sm opacity-60 cursor-not-allowed"
-              variant="secondary"
-            >
-              <Lock className="h-3.5 w-3.5 mr-1.5" />
-              {!sched.isRunningToday ? `Closed (${sched.currentDayName} Off)` : done ? "Closed" : "Upcoming"}
-            </Button>
-          )}
+          </div>
         </div>
       </article>
     );
   };
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      {/* User Today's Expense Only */}
-      {user && (
-        <section className="mb-6 rounded-xl border border-primary/30 bg-card p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Today's Bet (Expense)</span>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="font-display text-3xl sm:text-4xl font-bold tracking-wide text-primary">
-                ₹{todayExp?.totalExpense ?? 0}
-              </span>
-              <span className="text-xs text-muted-foreground">total bet played today</span>
+    <main className="mx-auto max-w-5xl px-3 sm:px-4 py-4 sm:py-6 pb-24 sm:pb-12">
+      {/* PLAYON Guest Banner */}
+      {!user && (
+        <section className="mb-5 rounded-2xl border border-gold/40 bg-gradient-to-r from-card via-gold/10 to-card p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-left">
+            <img src="/icon.svg" alt="PLAYON" className="h-12 w-12 object-contain shrink-0 rounded-2xl shadow-xs" />
+            <div>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-wide text-gold">
+                Welcome to PLAYON
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Official Online Bazar Booking. Instant UPI Deposit & Fast Withdrawals.
+              </p>
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {todayExp?.playsCount ?? 0} {todayExp?.playsCount === 1 ? "bet" : "bets"} played today
-            </p>
           </div>
-
-          <Link
-            to="/history"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
-          >
-            <History className="h-3.5 w-3.5" /> View My Plays &rarr;
-          </Link>
+          <Button asChild size="default" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-md w-full sm:w-auto shrink-0">
+            <Link to="/auth">Sign In to Play &rarr;</Link>
+          </Button>
         </section>
       )}
 
-      {/* Markets List */}
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-3xl tracking-wide text-foreground">Live Bazar Markets</h2>
-        <span className="text-xs text-muted-foreground">All times in IST</span>
+      {/* User Wallet & Quick Play Dashboard */}
+      {user && (
+        <section className="mb-5 rounded-2xl border border-gold/40 bg-gradient-to-r from-card via-gold/5 to-card p-4 sm:p-5 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Left: Balances */}
+            <div className="flex items-center gap-6">
+              <div>
+                <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <Wallet className="h-3.5 w-3.5 text-emerald-400" /> Available Balance
+                </span>
+                <p className="font-display text-3xl sm:text-4xl font-extrabold text-gold tracking-wide mt-0.5">
+                  ₹{profile?.points ?? 0}
+                </p>
+              </div>
+
+              <div className="h-10 w-px bg-border/60" />
+
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Today's Bet
+                </span>
+                <p className="font-display text-2xl sm:text-3xl font-bold text-foreground tracking-wide mt-0.5">
+                  ₹{todayExp?.totalExpense ?? 0}
+                </p>
+                <span className="text-[10px] text-muted-foreground">{todayExp?.playsCount ?? 0} bets today</span>
+              </div>
+            </div>
+
+            {/* Right: Quick Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setAddFundsOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 gap-1.5 shadow-sm rounded-xl cursor-pointer"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Add Money
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setWithdrawOpen(true)}
+                className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10 font-bold text-xs h-9 gap-1.5 rounded-xl cursor-pointer"
+              >
+                <ArrowUpRight className="h-4 w-4" />
+                Withdraw
+              </Button>
+
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setPassbookOpen(true)}
+                className="font-bold text-xs h-9 gap-1.5 rounded-xl cursor-pointer"
+              >
+                <BookOpen className="h-3.5 w-3.5 text-gold" />
+                Passbook
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setGameRatesOpen(true)}
+                className="font-bold text-xs h-9 gap-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl cursor-pointer"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-gold" />
+                Game Rates
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Top Quick Utility Toolbar */}
+      <div className="mb-3.5 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-2xl sm:text-3xl tracking-wide text-foreground font-bold">
+            Live Bazar Markets
+          </h2>
+          <Badge variant="outline" className="text-[10px] font-bold border-gold/40 text-gold bg-gold/10">
+            {openMarkets.length} Active Today
+          </Badge>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs">
+          <button
+            onClick={() => setGameRatesOpen(true)}
+            className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline cursor-pointer bg-gold/10 px-2.5 py-1 rounded-lg border border-gold/30"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-gold" />
+            <span>Rates Chart</span>
+          </button>
+          <a
+            href="https://wa.me/918143175017?text=Hello%20PLAYON%20Support"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:underline cursor-pointer bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30"
+          >
+            <MessageCircle className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Help</span>
+          </a>
+        </div>
       </div>
 
-      {isLoading && <p className="text-muted-foreground">Loading markets…</p>}
+      {isLoading && (
+        <div className="py-12 text-center text-sm text-muted-foreground animate-pulse">
+          Loading live bazar markets…
+        </div>
+      )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Markets Grid */}
+      <div className="grid gap-3.5 sm:gap-4 sm:grid-cols-2">
         {openMarkets.map(renderMarketCard)}
 
         {closedMarkets.length > 0 && openMarkets.length > 0 && (
@@ -194,6 +362,24 @@ function Index() {
 
         {closedMarkets.map(renderMarketCard)}
       </div>
+
+      {/* Wallet Modals */}
+      <AddFundsModal open={addFundsOpen} onOpenChange={setAddFundsOpen} />
+      <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
+      <PassbookModal
+        open={passbookOpen}
+        onOpenChange={setPassbookOpen}
+        onOpenDeposit={() => setAddFundsOpen(true)}
+        onOpenWithdraw={() => setWithdrawOpen(true)}
+      />
+
+      {/* Market Chart & Game Rates Modals */}
+      <MarketChartModal
+        market={selectedChartMarket}
+        open={!!selectedChartMarket}
+        onOpenChange={(open) => !open && setSelectedChartMarket(null)}
+      />
+      <GameRatesModal open={gameRatesOpen} onOpenChange={setGameRatesOpen} />
     </main>
   );
 }
