@@ -2,7 +2,7 @@
   <defs>
     <!-- Background Luxury Emerald Gradient -->
     <radialGradient id="bgEmerald" cx="50%" cy="35%" r="70%">
-      <stop offset="0%" stop-color="#0f3d2a" />
+      <stop offset="0%" stop-color="#103c2a" />
       <stop offset="55%" stop-color="#061811" />
       <stop offset="100%" stop-color="#020a07" />
     </radialGradient>
@@ -16,7 +16,7 @@
       <stop offset="100%" stop-color="#B45309" />
     </linearGradient>
 
-    <!-- Gold Highlight Gradient for Crown/Bevel -->
+    <!-- Gold Light Highlight -->
     <linearGradient id="goldLight" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#FFFBEB" />
       <stop offset="35%" stop-color="#FDE047" />
@@ -31,63 +31,66 @@
 
     <!-- Drop Shadows -->
     <filter id="glowGold" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#F59E0B" flood-opacity="0.45"/>
-      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000" flood-opacity="0.7"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#F59E0B" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000" flood-opacity="0.8"/>
     </filter>
 
-    <filter id="shadowHeavy" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#000000" flood-opacity="0.6"/>
+    <filter id="shadowSpade" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.75"/>
     </filter>
   </defs>
 
-  <!-- 1. Base Squircle -->
+  <!-- 1. Squircle Backdrop -->
   <rect width="512" height="512" rx="112" fill="url(#bgEmerald)" />
 
-  <!-- 2. Outer 24K Gold Rim -->
+  <!-- 2. Outer 24K Gold Rim & Casino Beaded Rim -->
   <rect x="20" y="20" width="472" height="472" rx="96" fill="none" stroke="url(#gold24k)" stroke-width="4.5" opacity="0.9" />
-  
-  <!-- 3. Casino Coin Beaded Outer Ring -->
   <circle cx="256" cy="256" r="218" fill="none" stroke="url(#gold24k)" stroke-width="3" stroke-dasharray="6, 8" opacity="0.5" />
   <circle cx="256" cy="256" r="208" fill="none" stroke="url(#emeraldNeon)" stroke-width="1.5" opacity="0.4" />
 
-  <!-- 4. Central Shield Base -->
-  <g filter="url(#shadowHeavy)">
-    <path d="M 256 75 L 390 115 L 390 230 L 340 335 L 256 385 L 172 335 L 122 230 L 122 115 Z" fill="#072016" stroke="url(#gold24k)" stroke-width="5" />
-    <path d="M 256 88 L 376 123 L 376 222 L 330 318 L 256 365 L 182 318 L 136 222 L 136 123 Z" fill="none" stroke="url(#gold24k)" stroke-width="1.5" opacity="0.4" />
+  <!-- 3. ♠ Majestic Ace of Spades (Centerpiece) -->
+  <g filter="url(#shadowSpade)">
+    <!-- Golden Spade Base -->
+    <path d="M 256 105 C 300 155, 390 195, 390 250 C 390 315, 318 355, 270 335 C 262 330, 258 328, 256 328 C 254 328, 250 330, 242 335 C 194 355, 122 315, 122 250 C 122 195, 212 155, 256 105 Z" fill="url(#gold24k)" stroke="#78350F" stroke-width="3" />
+    <!-- Spade Stem -->
+    <path d="M 250 328 C 248 355, 220 385, 192 400 L 320 400 C 292 385, 264 355, 262 328 Z" fill="url(#gold24k)" stroke="#78350F" stroke-width="2" />
+
+    <!-- Inner Emerald Velvet Spade Layer -->
+    <path d="M 256 128 C 294 170, 370 205, 370 250 C 370 304, 308 338, 268 322 C 261 318, 257 316, 256 316 C 255 316, 251 318, 244 322 C 204 338, 142 304, 142 250 C 142 205, 218 170, 256 128 Z" fill="#061a12" stroke="url(#goldLight)" stroke-width="2.5" />
   </g>
 
-  <!-- 5. Royal 5-Point Crown -->
+  <!-- 4. Royal 5-Point Crown on Spade Top -->
   <g filter="url(#glowGold)">
-    <path d="M 186 175 L 180 122 L 218 145 L 256 95 L 294 145 L 332 122 L 326 175 Z" fill="url(#goldLight)" stroke="#B45309" stroke-width="2.5" />
-    <rect x="184" y="172" width="144" height="14" rx="4" fill="url(#gold24k)" stroke="#B45309" stroke-width="1.5" />
-    <!-- Crown Jewels -->
-    <circle cx="256" cy="95" r="7" fill="#00E676" stroke="#FFF" stroke-width="1.5" />
-    <circle cx="180" cy="122" r="5" fill="#FFE57F" />
-    <circle cx="332" cy="122" r="5" fill="#FFE57F" />
-    <circle cx="218" cy="145" r="4.5" fill="#00E676" />
-    <circle cx="294" cy="145" r="4.5" fill="#00E676" />
-    <circle cx="256" cy="179" r="3.5" fill="#00E676" />
+    <path d="M 186 155 L 178 98 L 218 122 L 256 70 L 294 122 L 334 98 L 326 155 Z" fill="url(#goldLight)" stroke="#B45309" stroke-width="2.5" />
+    <rect x="184" y="152" width="144" height="14" rx="4" fill="url(#gold24k)" stroke="#B45309" stroke-width="1.5" />
+    <!-- Jewels -->
+    <circle cx="256" cy="70" r="7.5" fill="#00E676" stroke="#FFF" stroke-width="1.5" />
+    <circle cx="178" cy="98" r="5" fill="#FFE57F" />
+    <circle cx="334" cy="98" r="5" fill="#FFE57F" />
+    <circle cx="218" cy="122" r="4.5" fill="#00E676" />
+    <circle cx="294" cy="122" r="4.5" fill="#00E676" />
+    <circle cx="256" cy="159" r="3.5" fill="#00E676" />
   </g>
 
-  <!-- 6. Lucky 3D "777" -->
+  <!-- 5. Lucky 3D "777" Inside the Spade -->
   <g filter="url(#glowGold)">
     <!-- Left 7 -->
-    <text x="178" y="300" font-family="'Impact', 'Arial Black', sans-serif" font-size="112" font-weight="900" fill="url(#goldLight)" stroke="#78350F" stroke-width="3" text-anchor="middle">7</text>
+    <text x="194" y="278" font-family="'Impact', 'Arial Black', sans-serif" font-size="95" font-weight="900" fill="url(#goldLight)" stroke="#78350F" stroke-width="2.5" text-anchor="middle">7</text>
     <!-- Right 7 -->
-    <text x="334" y="300" font-family="'Impact', 'Arial Black', sans-serif" font-size="112" font-weight="900" fill="url(#goldLight)" stroke="#78350F" stroke-width="3" text-anchor="middle">7</text>
+    <text x="318" y="278" font-family="'Impact', 'Arial Black', sans-serif" font-size="95" font-weight="900" fill="url(#goldLight)" stroke="#78350F" stroke-width="2.5" text-anchor="middle">7</text>
     <!-- Center 7 (Prominent) -->
-    <text x="256" y="306" font-family="'Impact', 'Arial Black', sans-serif" font-size="136" font-weight="900" fill="url(#gold24k)" stroke="#451A03" stroke-width="4.5" text-anchor="middle">7</text>
+    <text x="256" y="284" font-family="'Impact', 'Arial Black', sans-serif" font-size="118" font-weight="900" fill="url(#gold24k)" stroke="#451A03" stroke-width="4" text-anchor="middle">7</text>
   </g>
 
-  <!-- 7. Sparkle Stars (✦) -->
+  <!-- 6. Sparkle Diamond Stars (✦) -->
   <g fill="#FFE57F">
-    <path d="M 152 205 Q 152 216 142 216 Q 152 216 152 227 Q 152 216 162 216 Q 152 216 152 205 Z" />
-    <path d="M 360 205 Q 360 216 350 216 Q 360 216 360 227 Q 360 216 370 216 Q 360 216 360 205 Z" />
+    <path d="M 145 195 Q 145 206 135 206 Q 145 206 145 217 Q 145 206 155 206 Q 145 206 145 195 Z" />
+    <path d="M 367 195 Q 367 206 357 206 Q 367 206 367 217 Q 367 206 377 206 Q 367 206 367 195 Z" />
   </g>
 
-  <!-- 8. Bottom Gold Banner: PLAYON -->
-  <g filter="url(#shadowHeavy)">
-    <path d="M 120 405 L 145 385 L 367 385 L 392 405 L 372 442 L 140 442 Z" fill="#0a1f16" stroke="url(#gold24k)" stroke-width="3.5" />
-    <text x="256" y="423" font-family="'Arial Black', 'Impact', sans-serif" font-size="30" font-weight="900" letter-spacing="9" fill="url(#goldLight)" text-anchor="middle">PLAYON</text>
+  <!-- 7. Bottom Gold Banner: PLAYON777 -->
+  <g filter="url(#shadowSpade)">
+    <path d="M 100 420 L 130 395 L 382 395 L 412 420 L 390 455 L 122 455 Z" fill="#072016" stroke="url(#gold24k)" stroke-width="3" />
+    <text x="256" y="437" font-family="'Arial Black', 'Impact', sans-serif" font-size="28" font-weight="900" letter-spacing="8" fill="url(#goldLight)" text-anchor="middle">PLAYON777</text>
   </g>
 </svg>
