@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setDisplayZoomControls(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setUserAgentString(settings.getUserAgentString() + " PlayOnApp/1.0.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " Playon777App/1.0.0");
 
         // Native Bluetooth Bridge for thermal receipt printing
         webView.addJavascriptInterface(new BluetoothPrinterBridge(this, webView), "AndroidBridge");
@@ -114,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                if (url.startsWith("https://digitjodi.vercel.app") || url.startsWith("http://digitjodi.vercel.app")) {
+                if (url.startsWith("https://playon-booking-app.vercel.app") || url.startsWith("http://playon-booking-app.vercel.app")) {
                     return false;
                 }
 

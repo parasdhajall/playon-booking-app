@@ -10,10 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign In & Register — PLAYON" },
-      { name: "description", content: "Sign in or register your PLAYON account." },
-      { property: "og:title", content: "Sign In — PLAYON" },
-      { property: "og:description", content: "Sign in with your mobile number to PLAYON." },
+      { title: "Sign In & Register — Playon777" },
+      { name: "description", content: "Sign in or register your Playon777 account." },
+      { property: "og:title", content: "Sign In — Playon777" },
+      { property: "og:description", content: "Sign in with your mobile number to Playon777." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -79,7 +79,7 @@ export function AuthPage() {
       return;
     }
 
-    toast.success("Welcome back to PLAYON!");
+    toast.success("Welcome back to Playon777!");
     if (email.includes("admin")) {
       navigate({ to: "/admin" });
     } else {
@@ -122,7 +122,7 @@ export function AuthPage() {
       return;
     }
 
-    toast.success("Account created successfully! Welcome to PLAYON.");
+    toast.success("Account created successfully! Welcome to Playon777.");
     navigate({ to: "/" });
   };
 
@@ -146,9 +146,9 @@ export function AuthPage() {
           <div className="flex justify-center mb-1">
             <span className="font-display text-3xl sm:text-4xl font-black tracking-wider text-gold drop-shadow-sm flex items-center gap-2">
               <span className="inline-block h-8 w-8 rounded-xl bg-gold/20 border border-gold/40 text-gold text-center text-base font-black leading-8">
-                P
+                7
               </span>
-              <span>PLAY<span className="text-foreground">ON</span></span>
+              <span>PLAY<span className="text-foreground">ON</span><span className="text-emerald-400 font-mono text-2xl sm:text-3xl ml-0.5">777</span></span>
             </span>
           </div>
           <h1 className="font-display text-2xl sm:text-3xl tracking-wider text-gold">

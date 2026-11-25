@@ -43,10 +43,10 @@ import { GameRatesModal } from "@/components/modals/GameRatesModal";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PLAYON — Online Matka & Live Bazar Play" },
-      { name: "description", content: "PLAYON — Play daily online matka & number markets. Live DPBoss results and instant wallet plays." },
-      { property: "og:title", content: "PLAYON — Online Matka & Live Bazar Play" },
-      { property: "og:description", content: "PLAYON Official Online Booking. Live results and instant plays." },
+      { title: "Playon777 — Online Matka & Live Bazar Play" },
+      { name: "description", content: "Playon777 — Play daily online matka & number markets. Live DPBoss results and instant wallet plays." },
+      { property: "og:title", content: "Playon777 — Online Matka & Live Bazar Play" },
+      { property: "og:description", content: "Playon777 Official Online Booking. Live results and instant plays." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -222,10 +222,10 @@ function Index() {
       {!user && (
         <section className="mb-5 rounded-2xl border border-gold/40 bg-gradient-to-r from-card via-gold/10 to-card p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-left">
-            <img src="/icon.svg" alt="PLAYON" className="h-12 w-12 object-contain shrink-0 rounded-2xl shadow-xs" />
+            <img src="/icon.svg" alt="Playon777" className="h-12 w-12 object-contain shrink-0 rounded-2xl shadow-xs" />
             <div>
               <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-wide text-gold">
-                Welcome to PLAYON
+                Welcome to Playon777
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Official Online Bazar Booking. Instant UPI Deposit & Fast Withdrawals.
@@ -320,7 +320,7 @@ function Index() {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-sm sm:text-base text-foreground">
-                Download PLAYON Android App
+                Download Playon777 Android App
               </h3>
               <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">
                 APK
@@ -332,8 +332,8 @@ function Index() {
           </div>
         </div>
         <a
-          href="/PlayOn.apk"
-          download="PlayOn.apk"
+          href="/Playon777.apk"
+          download="Playon777.apk"
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all shrink-0 cursor-pointer"
         >
           <Download className="h-4 w-4" />

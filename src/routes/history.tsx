@@ -20,10 +20,10 @@ import {
 export const Route = createFileRoute("/history")({
   head: () => ({
     meta: [
-      { title: "My Bets & History — PLAYON" },
-      { name: "description", content: "See your PLAYON past bets, results and winnings." },
-      { property: "og:title", content: "My Bets — PLAYON" },
-      { property: "og:description", content: "Your PLAYON play and transaction history." },
+      { title: "My Bets & History — Playon777" },
+      { name: "description", content: "See your Playon777 past bets, results and winnings." },
+      { property: "og:title", content: "My Bets — Playon777" },
+      { property: "og:description", content: "Your Playon777 play and transaction history." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

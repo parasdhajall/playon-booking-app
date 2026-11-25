@@ -28,7 +28,7 @@ export function GameRatesModal({ open, onOpenChange }: GameRatesModalProps) {
             </span>
             <div>
               <DialogTitle className="text-lg font-bold text-foreground">
-                PLAYON Official Game Rates
+                Playon777 Official Game Rates
               </DialogTitle>
               <p className="text-xs text-muted-foreground">
                 Guaranteed highest market rates & fastest instant payouts
@@ -67,7 +67,7 @@ export function GameRatesModal({ open, onOpenChange }: GameRatesModalProps) {
           <span className="inline-flex items-center gap-1.5">
             <ShieldCheck className="h-4 w-4 text-emerald-500" /> 100% Trusted & Verified Rates
           </span>
-          <span className="font-bold text-foreground">PLAYON</span>
+          <span className="font-bold text-foreground">Playon777</span>
         </div>
       </DialogContent>
     </Dialog>

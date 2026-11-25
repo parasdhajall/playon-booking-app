@@ -60,12 +60,12 @@ export function AppDrawer({
           <SheetHeader className="p-4 bg-gradient-to-br from-secondary/80 via-secondary/40 to-card border-b border-border/60 text-left">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-2xl bg-gold/20 border border-gold/40 flex items-center justify-center font-black text-xl text-gold shadow-inner shrink-0">
-                {user ? displayName.slice(0, 1).toUpperCase() : "P"}
+                {user ? displayName.slice(0, 1).toUpperCase() : "7"}
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-bold text-base text-foreground truncate">{displayName}</h3>
                 <p className="text-xs font-mono text-muted-foreground truncate">
-                  {user ? (mobileNumber ? `+91 ${mobileNumber}` : "Logged In") : "Welcome to PLAYON"}
+                  {user ? (mobileNumber ? `+91 ${mobileNumber}` : "Logged In") : "Welcome to Playon777"}
                 </p>
                 {profile?.isAdmin && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-gold/20 border border-gold/40 px-2 py-0.2 text-[10px] font-extrabold text-gold tracking-wider mt-0.5">
@@ -212,14 +212,14 @@ export function AppDrawer({
 
             {/* Direct Android APK Download */}
             <a
-              href="/PlayOn.apk"
-              download="PlayOn.apk"
+              href="/Playon777.apk"
+              download="Playon777.apk"
               onClick={() => onOpenChange(false)}
               className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold hover:brightness-110 transition-all shadow-xs"
             >
               <div className="flex items-center gap-3">
                 <Smartphone className="h-4 w-4 text-emerald-400" />
-                <span>Download Android App</span>
+                <span>Download Playon777 App</span>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 font-mono">
                 APK
@@ -228,7 +228,7 @@ export function AppDrawer({
 
             {/* Direct Support links */}
             <a
-              href="https://wa.me/918143175017?text=Hello%20PLAYON%20Support"
+              href="https://wa.me/918143175017?text=Hello%20Playon777%20Support"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-secondary/60 text-foreground transition-colors"

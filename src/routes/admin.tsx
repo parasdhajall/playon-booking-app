@@ -51,9 +51,9 @@ import { fetchRsbossLiveResults, type MarketLiveResult } from "@/lib/rsbossFetch
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Management Panel — PLAYON" },
-      { name: "description", content: "PLAYON operator console. Manage markets, declare results, player bets, wallet requests and accounting." },
-      { property: "og:title", content: "Admin Panel — PLAYON" },
+      { title: "Admin Management Panel — Playon777" },
+      { name: "description", content: "Playon777 operator console. Manage markets, declare results, player bets, wallet requests and accounting." },
+      { property: "og:title", content: "Admin Panel — Playon777" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -723,7 +723,7 @@ function Admin() {
           <Shield className="h-12 w-12 text-gold mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Admin Sign In Required</h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Please sign in with your authorized administrator account to access the PLAYON Control Panel.
+            Please sign in with your authorized administrator account to access the Playon777 Control Panel.
           </p>
           <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-11">
             <Link to="/auth">Sign In as Admin</Link>
@@ -760,9 +760,9 @@ function Admin() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/10 border border-gold/30 px-3 py-1 text-xs font-semibold text-gold">
-            <Shield className="h-3.5 w-3.5" /> PLAYON Official
+            <Shield className="h-3.5 w-3.5" /> Playon777 Official
           </span>
-          <h1 className="mt-1 font-display text-4xl tracking-wide text-gold">PLAYON Control Panel</h1>
+          <h1 className="mt-1 font-display text-4xl tracking-wide text-gold">Playon777 Control Panel</h1>
         </div>
 
         {/* Tab Navigation */}

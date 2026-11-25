@@ -75,7 +75,7 @@ export function BottomNav({ onOpenPassbook, onOpenWallet }: BottomNavProps) {
 
         {/* 5. Support WhatsApp */}
         <a
-          href="https://wa.me/918143175017?text=Hello%20PLAYON%20Support"
+          href="https://wa.me/918143175017?text=Hello%20Playon777%20Support"
           target="_blank"
           rel="noopener noreferrer"
           className="flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-muted-foreground hover:text-emerald-500 transition-all cursor-pointer"

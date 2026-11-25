@@ -63,12 +63,12 @@ export function SiteHeader() {
           </button>
 
           {/* 2. Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0 py-0.5" title="PLAYON">
+          <Link to="/" className="flex items-center gap-2 shrink-0 py-0.5" title="PLAYON777">
             <span className="font-display text-2xl sm:text-3xl font-black tracking-wider text-gold drop-shadow-sm flex items-center gap-1.5">
               <span className="inline-block h-6 w-6 rounded-lg bg-gold/20 border border-gold/40 text-gold text-center text-xs font-black leading-6">
-                P
+                7
               </span>
-              <span>PLAY<span className="text-foreground">ON</span></span>
+              <span>PLAY<span className="text-foreground">ON</span><span className="text-emerald-400 font-mono text-xl sm:text-2xl ml-0.5">777</span></span>
             </span>
           </Link>
 
@@ -115,10 +115,10 @@ export function SiteHeader() {
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
             {/* Download APK Pill */}
             <a
-              href="/PlayOn.apk"
-              download="PlayOn.apk"
+              href="/Playon777.apk"
+              download="Playon777.apk"
               className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 sm:px-2.5 py-1 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-all shadow-xs"
-              title="Download Android App (APK)"
+              title="Download Playon777 Android App (APK)"
             >
               <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
               <span className="hidden xs:inline sm:inline">App</span>
