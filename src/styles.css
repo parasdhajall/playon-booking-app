@@ -35,29 +35,29 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.17 0.03 160);
-  --foreground: oklch(0.96 0.02 95);
-  --card: oklch(0.22 0.04 160);
-  --card-foreground: oklch(0.96 0.02 95);
-  --popover: oklch(0.22 0.04 160);
-  --popover-foreground: oklch(0.96 0.02 95);
-  --primary: oklch(0.82 0.15 85);
-  --primary-foreground: oklch(0.18 0.03 160);
-  --secondary: oklch(0.28 0.05 160);
-  --secondary-foreground: oklch(0.96 0.02 95);
-  --muted: oklch(0.26 0.04 160);
-  --muted-foreground: oklch(0.72 0.03 120);
-  --accent: oklch(0.65 0.19 30);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.6 0.22 25);
+  --background: oklch(0.14 0.04 155);
+  --foreground: oklch(0.97 0.02 140);
+  --card: oklch(0.19 0.05 155);
+  --card-foreground: oklch(0.97 0.02 140);
+  --popover: oklch(0.19 0.05 155);
+  --popover-foreground: oklch(0.97 0.02 140);
+  --primary: oklch(0.72 0.18 150);
+  --primary-foreground: oklch(0.12 0.04 155);
+  --secondary: oklch(0.24 0.06 155);
+  --secondary-foreground: oklch(0.97 0.02 140);
+  --muted: oklch(0.21 0.05 155);
+  --muted-foreground: oklch(0.72 0.04 145);
+  --accent: oklch(0.82 0.16 85);
+  --accent-foreground: oklch(0.12 0.04 85);
+  --destructive: oklch(0.62 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --success: oklch(0.72 0.17 150);
-  --border: oklch(0.34 0.05 160);
-  --input: oklch(0.34 0.05 160);
-  --ring: oklch(0.82 0.15 85);
-  --gradient-gold: linear-gradient(135deg, #FFC107 0%, #FFA000 45%, #E89B00 100%);
-  --gradient-felt: radial-gradient(ellipse at top, #1A1C24, #0D0E12 75%);
-  --shadow-glow: 0 10px 40px -12px rgba(232, 155, 0, 0.45);
+  --success: oklch(0.75 0.19 145);
+  --border: oklch(0.28 0.06 155);
+  --input: oklch(0.28 0.06 155);
+  --ring: oklch(0.72 0.18 150);
+  --gradient-gold: linear-gradient(135deg, #FFE57F 0%, #FFB300 45%, #E68A00 100%);
+  --gradient-felt: radial-gradient(ellipse at top, #0d251d 0%, #06130e 75%);
+  --shadow-glow: 0 10px 40px -12px rgba(16, 185, 129, 0.45);
 }
 
 @layer base {
@@ -73,7 +73,7 @@
   }
   body {
     background: var(--gradient-felt);
-    background-color: oklch(0.17 0.03 160);
+    background-color: oklch(0.14 0.04 155);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     min-height: 100vh;
