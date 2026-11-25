@@ -2,6 +2,10 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { startAutoSyncWorker, handleCronApiRequest } from "./lib/autoSyncService";
+
+// Start 24/7 background Auto-Declare and 4:00 AM Reset worker on server initialization
+startAutoSyncWorker();
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -47,6 +51,14 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      // 1. Intercept Cron / Background Sync API routes
+      const url = new URL(request.url);
+      const cronResponse = await handleCronApiRequest(url);
+      if (cronResponse) {
+        return cronResponse;
+      }
+
+      // 2. Delegate to standard TanStack Start SSR handler
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

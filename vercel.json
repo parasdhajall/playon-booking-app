@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/auto-declare",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/reset-4am",
+      "schedule": "30 22 * * *"
+    }
+  ]
+}
