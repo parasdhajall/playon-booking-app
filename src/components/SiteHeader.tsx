@@ -12,6 +12,7 @@ import {
   MessageCircle,
   TrendingUp,
   Shield,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,6 +113,17 @@ export function SiteHeader() {
 
           {/* 4. Right Action Section */}
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+            {/* Download APK Pill */}
+            <a
+              href="/PlayOn.apk"
+              download="PlayOn.apk"
+              className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 sm:px-2.5 py-1 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-all shadow-xs"
+              title="Download Android App (APK)"
+            >
+              <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="hidden xs:inline sm:inline">App</span>
+            </a>
+
             {profile?.isAdmin && (
               <Link
                 to="/admin"

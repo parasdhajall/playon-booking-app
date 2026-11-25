@@ -19,6 +19,7 @@ import {
   ArrowUpRight,
   User,
   Sparkles,
+  Smartphone,
 } from "lucide-react";
 
 interface AppDrawerProps {
@@ -208,6 +209,22 @@ export function AppDrawer({
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
             </button>
+
+            {/* Direct Android APK Download */}
+            <a
+              href="/PlayOn.apk"
+              download="PlayOn.apk"
+              onClick={() => onOpenChange(false)}
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold hover:brightness-110 transition-all shadow-xs"
+            >
+              <div className="flex items-center gap-3">
+                <Smartphone className="h-4 w-4 text-emerald-400" />
+                <span>Download Android App</span>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 font-mono">
+                APK
+              </span>
+            </a>
 
             {/* Direct Support links */}
             <a

@@ -30,7 +30,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String APP_URL = "https://digitjodi.vercel.app/";
+    private static final String APP_URL = "https://playon-booking-app.vercel.app/";
     private static final int BACK_PRESS_INTERVAL = 2000;
 
     private WebView webView;

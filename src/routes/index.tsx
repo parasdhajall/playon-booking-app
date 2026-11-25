@@ -17,6 +17,8 @@ import {
   Sparkles,
   MessageCircle,
   ShieldCheck,
+  Smartphone,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -308,6 +310,36 @@ function Index() {
           </div>
         </section>
       )}
+
+      {/* Android APK Download Prompt Card */}
+      <section className="mb-5 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/40 via-card to-card p-3.5 sm:p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-3 text-left w-full sm:w-auto">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0 shadow-inner">
+            <Smartphone className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-sm sm:text-base text-foreground">
+                Download PLAYON Android App
+              </h3>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">
+                APK
+              </span>
+            </div>
+            <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+              Direct Android Install &bull; Fast Bidding &bull; Bluetooth Thermal Print Support
+            </p>
+          </div>
+        </div>
+        <a
+          href="/PlayOn.apk"
+          download="PlayOn.apk"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all shrink-0 cursor-pointer"
+        >
+          <Download className="h-4 w-4" />
+          <span>Download App (APK)</span>
+        </a>
+      </section>
 
       {/* Top Quick Utility Toolbar */}
       <div className="mb-3.5 flex items-center justify-between flex-wrap gap-2">
