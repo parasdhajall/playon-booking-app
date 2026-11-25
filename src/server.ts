@@ -2,7 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-import { startAutoSyncWorker, handleCronApiRequest } from "./lib/autoSyncService";
+import { startAutoSyncWorker, handleCronApiRequest, triggerBackgroundTrafficSync } from "./lib/autoSyncService";
 
 // Start 24/7 background Auto-Declare and 4:00 AM Reset worker on server initialization
 startAutoSyncWorker();
@@ -58,7 +58,12 @@ export default {
         return cronResponse;
       }
 
-      // 2. Delegate to standard TanStack Start SSR handler
+      // 2. Trigger self-healing background sync on web traffic (throttled to at most once per 60s)
+      if (!url.pathname.startsWith("/assets/") && !url.pathname.endsWith(".apk") && !url.pathname.endsWith(".ico") && !url.pathname.endsWith(".png") && !url.pathname.endsWith(".svg")) {
+        triggerBackgroundTrafficSync();
+      }
+
+      // 3. Delegate to standard TanStack Start SSR handler
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

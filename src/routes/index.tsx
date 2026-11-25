@@ -83,6 +83,16 @@ function Index() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [passbookOpen, setPassbookOpen] = useState(false);
 
+  useEffect(() => {
+    // Automated background trigger to check DPBoss results & 4:00 AM reset without admin panel
+    const pingAutoDeclare = () => {
+      fetch("/api/cron/auto-declare").catch(() => {});
+    };
+    pingAutoDeclare();
+    const interval = setInterval(pingAutoDeclare, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   const openMarkets = useMemo(
     () => (markets ? markets.filter((m) => isMarketOpen(m)).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) : []),
     [markets]

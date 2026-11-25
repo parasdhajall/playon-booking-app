@@ -89,15 +89,14 @@ function parseResultEntry(rawName: string, rawVal: string, nowIso: string): Mark
   return null;
 }
 
-export const fetchRsbossLiveResults = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{
-    success: boolean;
-    source: "dpboss" | "rsboss" | "matkaguessing" | "none";
-    results: Record<string, MarketLiveResult>;
-    error?: string;
-  }> => {
-    const results: Record<string, MarketLiveResult> = {};
-    const nowIso = new Date().toISOString();
+export async function fetchLiveResultsDirect(): Promise<{
+  success: boolean;
+  source: "dpboss" | "rsboss" | "matkaguessing" | "none";
+  results: Record<string, MarketLiveResult>;
+  error?: string;
+}> {
+  const results: Record<string, MarketLiveResult> = {};
+  const nowIso = new Date().toISOString();
 
     // 1. PRIMARY SOURCE: https://dpbossnet.me/ (Official & Standard for Indian retail players)
     try {
@@ -213,5 +212,8 @@ export const fetchRsbossLiveResults = createServerFn({ method: "GET" }).handler(
       results,
       error: "Could not reach live result providers.",
     };
-  }
+}
+
+export const fetchRsbossLiveResults = createServerFn({ method: "GET" }).handler(
+  async () => fetchLiveResultsDirect()
 );
