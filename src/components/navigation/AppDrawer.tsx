@@ -57,8 +57,8 @@ export function AppDrawer({
           {/* Header & User Profile Card */}
           <SheetHeader className="p-4 bg-gradient-to-br from-secondary/80 via-secondary/40 to-card border-b border-border/60 text-left">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-gold/20 border border-gold/40 flex items-center justify-center font-black text-xl text-gold shadow-inner shrink-0">
-                {user ? displayName.slice(0, 1).toUpperCase() : "7"}
+              <div className="h-12 w-12 rounded-2xl bg-card border border-gold/40 flex items-center justify-center font-black text-xl text-gold shadow-inner shrink-0 overflow-hidden p-1">
+                {user ? displayName.slice(0, 1).toUpperCase() : <img src="/icon.svg" alt="Playon777" className="h-full w-full object-contain" />}
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-bold text-base text-foreground truncate">{displayName}</h3>

@@ -61,12 +61,15 @@ export function SiteHeader() {
           </button>
 
           {/* 2. Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0 py-0.5" title="PLAYON777">
-            <span className="font-display text-2xl sm:text-3xl font-black tracking-wider text-gold drop-shadow-sm flex items-center gap-1.5">
-              <span className="inline-block h-6 w-6 rounded-lg bg-gold/20 border border-gold/40 text-gold text-center text-xs font-black leading-6">
-                7
-              </span>
-              <span>PLAY<span className="text-foreground">ON</span><span className="text-emerald-400 font-mono text-xl sm:text-2xl ml-0.5">777</span></span>
+          <Link to="/" className="flex items-center gap-2 shrink-0 py-0.5" title="Playon777">
+            <img
+              src="/icon.svg"
+              alt="Playon777"
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl object-contain drop-shadow-md border border-gold/30 p-0.5 bg-card/60 shrink-0"
+            />
+            <span className="font-display text-2xl sm:text-3xl font-black tracking-wider text-gold drop-shadow-sm flex items-center">
+              <span>PLAY<span className="text-foreground">ON</span></span>
+              <span className="ml-1 rounded-md bg-emerald-500/20 border border-emerald-500/40 px-1.5 py-0.2 text-emerald-400 font-mono text-sm sm:text-base font-black tracking-widest shadow-xs">777</span>
             </span>
           </Link>
 

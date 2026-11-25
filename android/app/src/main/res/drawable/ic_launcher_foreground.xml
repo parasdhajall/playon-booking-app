@@ -4,12 +4,52 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Outer Gold Ring -->
+
+    <!-- Outer Casino Beaded / Gold Ring (Within 72dp safe zone) -->
     <path
-        android:fillColor="#E5A93C"
-        android:pathData="M54,20 C35.2,20 20,35.2 20,54 C20,72.8 35.2,88 54,88 C72.8,88 88,72.8 88,54 C88,35.2 72.8,20 54,20 Z M54,26 C69.5,26 82,38.5 82,54 C82,69.5 69.5,82 54,82 C38.5,82 26,69.5 26,54 C26,38.5 38.5,26 54,26 Z" />
-    <!-- Letter P -->
+        android:fillColor="#FFB300"
+        android:pathData="M54,20 C35.2,20 20,35.2 20,54 C20,72.8 35.2,88 54,88 C72.8,88 88,72.8 88,54 C88,35.2 72.8,20 54,20 Z M54,23 C71.1,23 85,36.9 85,54 C85,71.1 71.1,85 54,85 C36.9,85 23,71.1 23,54 C23,36.9 36.9,23 54,23 Z" />
+
+    <!-- Inner Shield Badge -->
     <path
-        android:fillColor="#E5A93C"
-        android:pathData="M44,36 L58,36 C64.6,36 68,39.4 68,45 C68,50.6 64.6,54 58,54 L51,54 L51,72 L44,72 Z M51,48 L57.5,48 C60.2,48 61.5,46.8 61.5,45 C61.5,43.2 60.2,42 57.5,42 L51,42 Z" />
+        android:fillColor="#0D251D"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="1.5"
+        android:pathData="M54,26 L76,32 L76,52 C76,66 67,76 54,81 C41,76 32,66 32,52 L32,32 Z" />
+
+    <!-- Royal Crown at Top of Shield -->
+    <path
+        android:fillColor="#FFE57F"
+        android:pathData="M43,40 L42,33 L48,36 L54,29 L60,36 L66,33 L65,40 Z" />
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M54,28.5 A1.5,1.5 0 1,0 54,31.5 A1.5,1.5 0 1,0 54,28.5 Z" />
+
+    <!-- Crown Base Band -->
+    <path
+        android:fillColor="#FFB300"
+        android:pathData="M42,40 L66,40 L66,42 L42,42 Z" />
+
+    <!-- Lucky "777" Centerpiece -->
+    <!-- Left 7 -->
+    <path
+        android:fillColor="#FFE57F"
+        android:pathData="M41,47 L49,47 L46,62 L42.5,62 L45,50.5 L41,50.5 Z" />
+
+    <!-- Center 7 (Larger, Gold) -->
+    <path
+        android:fillColor="#FFD700"
+        android:strokeColor="#78350F"
+        android:strokeWidth="0.5"
+        android:pathData="M50,45 L60,45 L56.5,65 L52.5,65 L55.5,49 L50,49 Z" />
+
+    <!-- Right 7 -->
+    <path
+        android:fillColor="#FFE57F"
+        android:pathData="M61,47 L69,47 L66,62 L62.5,62 L65,50.5 L61,50.5 Z" />
+
+    <!-- Bottom Gold Star / Pip -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M54,70 L55.2,72.5 L58,72.8 L56,74.7 L56.5,77.5 L54,76.2 L51.5,77.5 L52,74.7 L50,72.8 L52.8,72.5 Z" />
 </vector>
