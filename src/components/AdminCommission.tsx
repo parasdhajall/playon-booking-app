@@ -8,7 +8,6 @@ import {
   Users,
   CheckCircle2,
   Clock,
-  Printer,
   Share2,
   ArrowUpRight,
   ArrowDownRight,
@@ -37,8 +36,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { fmtIST, gameLabel } from "@/lib/matka";
-import { PrinterStatusBadge } from "./PrinterStatusBadge";
-import { printerManager, usePrinter, printViaSystem, printAgentHisabViaSystem, type AgentHisabPrintData } from "@/lib/thermalPrinter";
 import { TraditionalKhataModal } from "./TraditionalKhataModal";
 import { getMarketShift } from "@/lib/khataBahi";
 
@@ -89,7 +86,6 @@ type AgentSummary = {
 
 export function AdminCommission({ markets }: { markets: Market[] }) {
   const qc = useQueryClient();
-  const { isConnected: isPrinterConnected } = usePrinter();
 
   // Date Filters
   const now = new Date();
@@ -565,40 +561,6 @@ _PlayOn Official Matka Management System_`;
     setCopiedSlip(true);
     toast.success("Hisab slip copied to clipboard!");
     setTimeout(() => setCopiedSlip(false), 2500);
-  };
-
-  const [isPrintingThermal, setIsPrintingThermal] = useState(false);
-
-  const handleThermalPrint = async () => {
-    if (!selectedAgentSlip || !activeSlipData) return;
-
-    const data: AgentHisabPrintData = {
-      agentName: selectedAgentSlip.name,
-      phone: selectedAgentSlip.phone,
-      marketName: activeSlipData.marketName,
-      dateStr: dateLabel,
-      playCount: activeSlipData.playCount,
-      totalSale: activeSlipData.totalSale,
-      commissionRate: activeSlipData.commissionRate,
-      totalCommission: activeSlipData.totalCommission,
-      totalWinning: activeSlipData.totalWinning,
-      totalAmount: activeSlipData.totalPayableToAgent,
-    };
-
-    if (isPrinterConnected) {
-      setIsPrintingThermal(true);
-      toast.info("Sending parchi to thermal printer...");
-      const res = await printerManager.printAgentHisab(data);
-      setIsPrintingThermal(false);
-      if (res.success) {
-        toast.success(res.message);
-        return;
-      }
-      toast.error(res.message);
-    }
-
-    // Direct clean 58mm thermal print via isolated iframe (never blank!)
-    printAgentHisabViaSystem(data);
   };
 
   // Open slip for specific market
@@ -1110,9 +1072,9 @@ _PlayOn Official Matka Management System_`;
                           type="button"
                           onClick={() => handleOpenSlip(a, "all")}
                           className="rounded-lg border bg-secondary hover:bg-secondary/80 text-foreground p-1.5 transition-all cursor-pointer"
-                          title="View & Print Hisab Slip"
+                          title="View Hisab Parchi"
                         >
-                          <Printer className="h-3.5 w-3.5" />
+                          <FileText className="h-3.5 w-3.5" />
                         </button>
 
                         {/* Inspect Bets */}
@@ -1165,8 +1127,6 @@ _PlayOn Official Matka Management System_`;
                     </p>
                   </div>
                 </div>
-
-                <PrinterStatusBadge showTextOnMobile={true} />
               </div>
             </DialogHeader>
 
@@ -1291,26 +1251,6 @@ _PlayOn Official Matka Management System_`;
               >
                 <Share2 className="h-3.5 w-3.5" />
                 WhatsApp
-              </Button>
-
-              <Button
-                size="sm"
-                disabled={isPrintingThermal}
-                className="flex-1 text-xs gap-1.5 cursor-pointer bg-primary text-primary-foreground font-bold shadow hover:bg-primary/90"
-                onClick={handleThermalPrint}
-              >
-                <Printer className="h-3.5 w-3.5" />
-                {isPrintingThermal ? "Printing…" : "Thermal Print"}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs gap-1 cursor-pointer text-muted-foreground hover:text-foreground"
-                onClick={() => printViaSystem()}
-                title="Print via Android System / Browser Print Service"
-              >
-                System Print
               </Button>
             </div>
           </DialogContent>

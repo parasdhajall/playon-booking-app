@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import {
   X,
   Share2,
-  Printer,
   Copy,
   Check,
   Edit2,
@@ -39,8 +38,6 @@ import {
   saveMagilNave,
 } from "@/lib/khataBahi";
 import { generateKhataSlipImageBlob } from "@/lib/khataImageGenerator";
-import { printerManager, usePrinter, isAndroidNativeApp } from "@/lib/thermalPrinter";
-import { PrinterStatusBadge } from "./PrinterStatusBadge";
 
 interface TraditionalKhataModalProps {
   open: boolean;
@@ -83,8 +80,6 @@ export function TraditionalKhataModal({
   const [copied, setCopied] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-
-  const { isConnected: isPrinterConnected, deviceName } = usePrinter();
 
   // Shift-specific override key
   const overrideKey = `${agent?.id}_${rawDateStr}_${shift}`;
@@ -225,96 +220,6 @@ export function TraditionalKhataModal({
     printKhataBahiAsPdf(khataData);
   };
 
-  // 1-Click 58mm Thermal Print
-  const handleThermalPrint = async () => {
-    setIsPrinting(true);
-    toast.info("थर्मल प्रिंटरवर पाठवत आहे...");
-
-    const bytes = generateKhataBahiEscPosBytes(khataData);
-
-    // 1. Android Native App Bridge
-    if (isAndroidNativeApp()) {
-      const bridge = (window as any).AndroidBridge;
-      if (!bridge.isBluetoothEnabled()) {
-        setIsPrinting(false);
-        toast.error("मोबाईलचे Bluetooth OFF आहे. कृपया Bluetooth सुरू करा.");
-        return;
-      }
-      if (!bridge.hasPermissions()) {
-        bridge.requestPermissions();
-        setIsPrinting(false);
-        toast.error("Bluetooth परवानगी द्या आणि पुन्हा प्रयत्न करा.");
-        return;
-      }
-
-      try {
-        const raw = bridge.getPairedDevices();
-        const devices: { name: string; address: string }[] = JSON.parse(raw || "[]");
-        const target =
-          devices.find((d) => /print|pos|mtp|inner|rp|mpt|veer|seznik|bluetooth/i.test(d.name)) ||
-          devices[0];
-
-        if (!target) {
-          setIsPrinting(false);
-          toast.error("कोणताही paired Bluetooth प्रिंटर सापडला नाही.");
-          return;
-        }
-
-        // Convert bytes to base64
-        let binary = "";
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-          binary += String.fromCharCode(bytes[i] ?? 0);
-        }
-        const b64 = window.btoa(binary);
-
-        const resStr = bridge.sendBytes(target.address, b64);
-        const res = JSON.parse(resStr || "{}");
-        setIsPrinting(false);
-        if (res.success) {
-          toast.success("थर्मल पावती प्रिंट झाली!");
-        } else {
-          toast.error(`प्रिंट अयशस्वी: ${res.message || "त्रुटी"}`);
-        }
-        return;
-      } catch (err: any) {
-        setIsPrinting(false);
-        toast.error(`Android print error: ${err.message}`);
-        return;
-      }
-    }
-
-    // 2. Standard Web Bluetooth
-    if (printerManager.isConnected()) {
-      const res = await printerManager.sendBytes(bytes);
-      setIsPrinting(false);
-      if (res.success) {
-        toast.success("थर्मल प्रिंटरवर पावती प्रिंट झाली!");
-      } else {
-        toast.error(`प्रिंट अयशस्वी: ${res.message}`);
-      }
-    } else {
-      const conn = await printerManager.connect();
-      if (conn.success) {
-        const res = await printerManager.sendBytes(bytes);
-        setIsPrinting(false);
-        if (res.success) {
-          toast.success("थर्मल प्रिंटरवर पावती प्रिंट झाली!");
-        } else {
-          toast.error(`प्रिंट अयशस्वी: ${res.message}`);
-        }
-      } else {
-        setIsPrinting(false);
-        toast.error(`प्रिंटर कनेक्ट होऊ शकला नाही: ${conn.message}`);
-      }
-    }
-  };
-
-  // Browser / System Print
-  const handleSystemPrint = () => {
-    window.print();
-  };
-
   // Dynamic Theme Styling
   const isPink = shift === "day";
   const isBlue = shift === "night";
@@ -366,7 +271,6 @@ export function TraditionalKhataModal({
                 {agent.phone && `(${agent.phone})`} • {dateStrDisplay}
               </p>
             </div>
-            <PrinterStatusBadge showTextOnMobile={false} />
           </div>
         </DialogHeader>
 
@@ -683,15 +587,15 @@ export function TraditionalKhataModal({
               <span className="truncate">मजकूर पाठवा</span>
             </Button>
 
-            {/* Normal Full-Size Print & Save as PDF Button */}
+            {/* Save as PDF Button */}
             <Button
               type="button"
               onClick={handleNormalPrintOrPdf}
               className="h-9 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-1.5 shadow-xs rounded-xl cursor-pointer"
-              title="A4 साइज नॉर्मल प्रिंट किंवा PDF सेव्ह करा (Normal Print or Save as PDF)"
+              title="PDF सेव्ह करा (Save as PDF)"
             >
-              <Printer className="h-3.5 w-3.5" />
-              <span className="truncate">प्रिंट / Save PDF</span>
+              <Download className="h-3.5 w-3.5" />
+              <span className="truncate">Save PDF</span>
             </Button>
 
             {/* Copy Button */}

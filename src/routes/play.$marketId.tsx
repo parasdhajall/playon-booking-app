@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, memo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, Clock, X, ShoppingBag, Trash2, Plus, CheckCircle2, Printer, Layers, Sparkles, Table, Check, Search, Info, Play, AlertCircle, AlertTriangle, Lock, User, RefreshCw } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, X, ShoppingBag, Trash2, Plus, CheckCircle2, Layers, Sparkles, Table, Check, Search, Info, Play, AlertCircle, AlertTriangle, Lock, User, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,13 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ThermalReceiptModal } from "@/components/ThermalReceiptModal";
-import { PrinterStatusBadge } from "@/components/PrinterStatusBadge";
-import {
-  type ReceiptData,
-  printerManager,
-  generateEscPosBytes,
-} from "@/lib/thermalPrinter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useProfile, useTodayExpense } from "@/hooks/useAuth";
 import { GAMES, PLAYABLE, type GameType, fmtTime, fmtBookingClose, getEffectiveTimes, resultLabel, isOpenPast, isClosePast, getPlayerDisplayName, canMarketDeclareOpen, isMarketScheduledToday } from "@/lib/matka";
@@ -216,10 +209,6 @@ function PlayPage() {
   // Bucket / Order Cart State
   const [bucket, setBucket] = useState<BucketItem[]>([]);
   const [isBucketOpen, setIsBucketOpen] = useState(false);
-
-  // Thermal Receipt Slip State
-  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
-  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
   // Jodi Bulk state
   const [selectedJodis, setSelectedJodis] = useState<string[]>([]);
@@ -958,58 +947,6 @@ function PlayPage() {
       const placedCount = bucket.length;
       const placedTotal = totalBucketAmount;
 
-      // Generate Thermal Receipt Slip Data
-      const now = new Date();
-      const dateStr = new Intl.DateTimeFormat("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }).format(now);
-      const timeStr = new Intl.DateTimeFormat("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      }).format(now);
-
-      const newReceipt: ReceiptData = {
-        slipId: `PO-${Date.now().toString().slice(-6)}`,
-        marketName: m?.name || "MARKET",
-        playerName: getPlayerDisplayName(user, profile),
-        dateStr,
-        timeStr,
-        items: bucket.map((b) => ({
-          gameLabel: b.gameLabel,
-          session: b.session,
-          number: b.number,
-          points: b.points,
-        })),
-        totalPoints: placedTotal,
-      };
-
-      setReceiptData(newReceipt);
-      setIsReceiptOpen(true);
-
-      // Auto-Print Receipt if printer is connected
-      if (printerManager.isConnected()) {
-        toast.info(`🖨️ Printing slip on ${printerManager.deviceName}...`);
-        printerManager.sendBytes(generateEscPosBytes(newReceipt)).then((res) => {
-          if (res.success) {
-            toast.success("Receipt printed on thermal printer!");
-          } else {
-            toast.error(`Print failed: ${res.message}`);
-          }
-        });
-      } else {
-        toast("Tip: Connect your Bluetooth thermal printer to auto-print paper slips on confirm.", {
-          action: {
-            label: "Connect Printer",
-            onClick: () => printerManager.connect(),
-          },
-        });
-      }
-
       toast.success(
         `🎉 Success! Placed ${placedCount} bets on ${m?.name} (Total ₹${placedTotal})!`
       );
@@ -1142,20 +1079,6 @@ function PlayPage() {
           <h1 className="font-display text-2xl tracking-wider text-gold">{m.name}</h1>
 
           <div className="flex items-center gap-2">
-            <PrinterStatusBadge showTextOnMobile={false} />
-
-            {receiptData && (
-              <button
-                type="button"
-                onClick={() => setIsReceiptOpen(true)}
-                className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-500 hover:bg-emerald-500/20 transition-all cursor-pointer"
-                title="Print Last Slip"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Slip</span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={() => setIsBucketOpen(true)}
@@ -2802,13 +2725,6 @@ function PlayPage() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-xs px-1 pt-1 border-t border-dashed border-border/80">
-              <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                <Printer className="h-3.5 w-3.5 text-gold" /> Auto-print slip on confirm
-              </span>
-              <PrinterStatusBadge showTextOnMobile={true} />
-            </div>
-
             <Button
               onClick={handleConfirmBucket}
               disabled={busy || bucket.length === 0}
@@ -2828,13 +2744,6 @@ function PlayPage() {
           </div>
         </SheetContent>
       </Sheet>
-
-      {/* 58mm Bluetooth & System Thermal Receipt Modal */}
-      <ThermalReceiptModal
-        open={isReceiptOpen}
-        onOpenChange={setIsReceiptOpen}
-        receiptData={receiptData}
-      />
 
       {/* 15 JODI FAMILIES BROWSER MODAL */}
       <Dialog open={isJodiFamilyChartOpen} onOpenChange={setIsJodiFamilyChartOpen}>

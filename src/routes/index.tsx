@@ -298,7 +298,7 @@ function Index() {
               </span>
             </div>
             <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
-              Direct Android Install &bull; Fast Bidding &bull; Bluetooth Thermal Print Support
+              Direct Android Install &bull; Fast Bidding &bull; Instant UPI Withdrawals
             </p>
           </div>
         </div>
