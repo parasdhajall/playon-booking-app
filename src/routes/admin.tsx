@@ -44,6 +44,7 @@ import { AdminPlays } from "@/components/AdminPlays";
 import { AdminRiskHedging } from "@/components/AdminRiskHedging";
 import { AdminCommission } from "@/components/AdminCommission";
 import { AdminWalletManagement } from "@/components/admin/AdminWalletManagement";
+import { useAdminDeposits, useAdminWithdrawals } from "@/hooks/useWallet";
 import { adminCreatePlayerAccount } from "@/lib/adminAuth";
 import { fetchRsbossLiveResults, type MarketLiveResult } from "@/lib/rsbossFetcher";
 
@@ -79,6 +80,10 @@ function Admin() {
     return markets ? sortMarketsForAdmin(markets) : [];
   }, [markets]);
   const qc = useQueryClient();
+
+  const { data: pendingDeposits } = useAdminDeposits("pending");
+  const { data: pendingWithdrawals } = useAdminWithdrawals("pending");
+  const totalPendingWallet = (pendingDeposits?.length || 0) + (pendingWithdrawals?.length || 0);
 
   const [activeTab, setActiveTab] = useState<"markets" | "plays" | "players" | "pnl" | "risk" | "commission" | "wallet">("markets");
   const [form, setForm] = useState({ name: "", open_time: "10:00", close_time: "11:00" });
@@ -820,7 +825,12 @@ function Admin() {
             }`}
           >
             <Coins className="h-3.5 w-3.5 text-emerald-400" />
-            Wallet & UPI Requests
+            <span>Wallet & UPI Requests</span>
+            {totalPendingWallet > 0 && (
+              <span className="ml-1 rounded-full bg-amber-400 px-1.5 py-0.2 text-[10px] font-black text-slate-950 animate-pulse">
+                {totalPendingWallet} NEW
+              </span>
+            )}
           </button>
         </div>
       </div>

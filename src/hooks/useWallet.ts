@@ -210,10 +210,11 @@ export function useWalletTransactions(userId?: string) {
 export function useAdminDeposits(statusFilter?: "pending" | "approved" | "rejected" | "all") {
   return useQuery({
     queryKey: ["admin_deposits", statusFilter],
+    refetchInterval: 4000,
     queryFn: async (): Promise<DepositRequest[]> => {
       let query = supabase
         .from("deposit_requests" as any)
-        .select("*, profiles:user_id(display_name, points)")
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -221,9 +222,26 @@ export function useAdminDeposits(statusFilter?: "pending" | "approved" | "reject
         query = query.eq("status", statusFilter);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as unknown as DepositRequest[];
+      const { data: requests, error } = await query;
+      if (error) {
+        console.error("Error fetching admin deposits:", error);
+        throw error;
+      }
+      if (!requests || requests.length === 0) return [];
+
+      // Safely fetch user profile details without relying on fragile PostgREST foreign key cache
+      const userIds = [...new Set((requests as any[]).map((r) => r.user_id))];
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, display_name, points, phone")
+        .in("id", userIds);
+
+      const profileMap = new Map((profs || []).map((p) => [p.id, p]));
+
+      return (requests as any[]).map((r) => ({
+        ...r,
+        profiles: profileMap.get(r.user_id) || { display_name: "Player", points: 0 },
+      }));
     },
   });
 }
@@ -232,10 +250,11 @@ export function useAdminDeposits(statusFilter?: "pending" | "approved" | "reject
 export function useAdminWithdrawals(statusFilter?: "pending" | "approved" | "rejected" | "all") {
   return useQuery({
     queryKey: ["admin_withdrawals", statusFilter],
+    refetchInterval: 4000,
     queryFn: async (): Promise<WithdrawalRequest[]> => {
       let query = supabase
         .from("withdrawal_requests" as any)
-        .select("*, profiles:user_id(display_name, points)")
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -243,9 +262,25 @@ export function useAdminWithdrawals(statusFilter?: "pending" | "approved" | "rej
         query = query.eq("status", statusFilter);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as unknown as WithdrawalRequest[];
+      const { data: requests, error } = await query;
+      if (error) {
+        console.error("Error fetching admin withdrawals:", error);
+        throw error;
+      }
+      if (!requests || requests.length === 0) return [];
+
+      const userIds = [...new Set((requests as any[]).map((r) => r.user_id))];
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, display_name, points, phone")
+        .in("id", userIds);
+
+      const profileMap = new Map((profs || []).map((p) => [p.id, p]));
+
+      return (requests as any[]).map((r) => ({
+        ...r,
+        profiles: profileMap.get(r.user_id) || { display_name: "Player", points: 0 },
+      }));
     },
   });
 }
