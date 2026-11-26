@@ -1,5 +1,5 @@
 // PlayOn High-Performance Service Worker (Strict Security & Zero-Stale Rules)
-const CACHE_VERSION = "playon-v1.0.0";
+const CACHE_VERSION = "playon777-v2.0.0";
 const STATIC_CACHE = `playon-static-${CACHE_VERSION}`;
 const SHELL_CACHE = `playon-shell-${CACHE_VERSION}`;
 
